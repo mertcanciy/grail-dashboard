@@ -16,4 +16,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Token symbols are inconsistent: most are `gX`, but e.g. JENSEN has symbol `JENSEN` and name `gJENSEN`. Use `ticker()` from `src/lib/grail/meta.ts` for display and the lowercased raw symbol for URLs/API.
 - Activity pages max out at `limit=200`; `ohlcv_window_days` max is 30; `pnl/leaderboard` periods are only `all_time` and `24h`.
 - Uniswap v4 pool state is read from `PoolManager.extsload` (pools mapping at slot 6), so no StateView address is needed per chain.
+- Market-wide aggregates live in `getMarketSnapshot()` (`src/lib/market.ts`). Cache only aggregates there (data cache items max 2 MB), never raw event arrays. Bump the key (`market-snapshot-vN`) when the shape changes.
+- Keep pages static/ISR: avoid `searchParams` in pages (it makes them dynamic); prerender variants and switch client-side instead (see Traders).
+- Deploy: `vercel deploy --prod` (project `mertcanciys-projects/grail-dashboard`, alias https://grail-dashboard-seven.vercel.app).
 - Pinned dependency versions are all at least 7 days old at install time; keep that rule when upgrading.

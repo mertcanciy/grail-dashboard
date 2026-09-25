@@ -1,5 +1,5 @@
 import type { Activity, GrailToken, Holder, TokenActivity } from "./grail/types";
-import { categoryOf, chainOf, personName, quoteAssetOf, ticker } from "./grail/meta";
+import { categoryOf, chainOf, imageOf, personName, quoteAssetOf, ticker } from "./grail/meta";
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
@@ -159,7 +159,7 @@ export function marketLenses(events: TokenActivity[], tokens: GrailToken[]) {
   const token = breakdown(trades, (e) => e.symbol, (key) => {
     const t = bySymbol.get(key);
     return t
-      ? { label: ticker(t), sublabel: personName(t), href: `/tokens/${key.toLowerCase()}`, image: t.image_url }
+      ? { label: ticker(t), sublabel: personName(t), href: `/tokens/${key.toLowerCase()}`, image: imageOf(t) }
       : { label: key };
   });
 

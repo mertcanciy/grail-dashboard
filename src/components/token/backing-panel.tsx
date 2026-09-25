@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { TokenView } from "@/lib/token-view";
-import { ticker } from "@/lib/grail/meta";
+import { FALLBACK_IMAGE, ticker } from "@/lib/grail/meta";
 import { formatNumber, formatUsd } from "@/lib/format";
 
 export function BackingPanel({ view }: { view: TokenView }) {
@@ -10,7 +10,7 @@ export function BackingPanel({ view }: { view: TokenView }) {
     ...token.reserves.map((r) => ({
       key: `r-${r.reserve_id}`,
       name: r.name.trim(),
-      image: r.image_url,
+      image: r.image_url || FALLBACK_IMAGE,
       category: r.category,
       pop: r.psa_pop,
       perItem: r.multiplier,
@@ -20,7 +20,7 @@ export function BackingPanel({ view }: { view: TokenView }) {
     ...token.offchain_collectibles.map((c) => ({
       key: `o-${c.collectible_id}`,
       name: c.name.trim(),
-      image: c.image_url,
+      image: c.image_url || FALLBACK_IMAGE,
       category: c.category,
       pop: c.psa_pop,
       perItem: null,

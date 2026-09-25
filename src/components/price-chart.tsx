@@ -10,6 +10,7 @@ import { Segmented } from "./segmented";
 type Range = "1d" | "7d" | "30d";
 
 const RANGE_LABEL: Record<Range, string> = { "1d": "24 hours", "7d": "7 days", "30d": "30 days" };
+const CLIENT_TTL_MS = 120_000;
 
 interface Point {
   t: number;
@@ -36,19 +37,22 @@ export function PriceChart({
 }) {
   const [range, setRange] = useState<Range>("7d");
   const [shown, setShown] = useState<Range>("7d");
-  const [cache, setCache] = useState<Partial<Record<Range, Candle[]>>>({ "7d": initial });
+  // The 7-day series always comes from the server render, so page refreshes keep it current.
+  // Other ranges are fetched on demand and reused for two minutes.
+  const [cache, setCache] = useState<Partial<Record<Range, { candles: Candle[]; at: number }>>>({});
   const [failed, setFailed] = useState<Partial<Record<Range, boolean>>>({});
   const latest = useRef<Range>("7d");
 
   const select = (next: Range) => {
     setRange(next);
     latest.current = next;
-    if (cache[next]) return setShown(next);
+    const hit = cache[next];
+    if (next === "7d" || (hit && Date.now() - hit.at < CLIENT_TTL_MS)) return setShown(next);
     setFailed((f) => ({ ...f, [next]: false }));
     fetch(`/api/ohlcv/${symbol}?range=${next}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: { candles: Candle[] }) => {
-        setCache((c) => ({ ...c, [next]: d.candles }));
+        setCache((c) => ({ ...c, [next]: { candles: d.candles, at: Date.now() } }));
         if (latest.current === next) setShown(next);
       })
       .catch(() => setFailed((f) => ({ ...f, [next]: true })));
@@ -56,7 +60,10 @@ export function PriceChart({
 
   const loading = range !== shown && !failed[range];
   const error = failed[range] ? "Price history is unavailable right now. Try another range." : null;
-  const data = useMemo(() => toPoints(cache[shown] ?? [], livePrice, renderedAt), [cache, shown, livePrice, renderedAt]);
+  const data = useMemo(
+    () => toPoints(shown === "7d" ? initial : (cache[shown]?.candles ?? []), livePrice, renderedAt),
+    [shown, initial, cache, livePrice, renderedAt],
+  );
   const first = data[0]?.price;
   const last = data.at(-1)?.price;
   const change = first && last ? ((last - first) / first) * 100 : null;

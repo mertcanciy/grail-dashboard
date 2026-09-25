@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTokens } from "@/lib/grail/api";
-import { personName, slugOf, ticker } from "@/lib/grail/meta";
+import { itemImageOf, personName, slugOf, ticker } from "@/lib/grail/meta";
 import { formatPrice } from "@/lib/format";
 import { loadToken } from "@/lib/token-view";
 import { TokenHeader } from "@/components/token/token-header";
@@ -15,9 +15,18 @@ import { TradeTape } from "@/components/trade-tape";
 
 export const revalidate = 300;
 
+/**
+ * Known tokens are prerendered at build. Tokens listed after the build render on their first visit and are then
+ * cached like the rest (dynamicParams defaults to true). If Grail is unreachable during a build, skip prerendering
+ * rather than failing the deploy.
+ */
 export async function generateStaticParams() {
-  const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
-  return tokens.map((t) => ({ symbol: slugOf(t) }));
+  try {
+    const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
+    return tokens.map((t) => ({ symbol: slugOf(t) }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata(props: PageProps<"/tokens/[symbol]">): Promise<Metadata> {
@@ -28,7 +37,7 @@ export async function generateMetadata(props: PageProps<"/tokens/[symbol]">): Pr
   return {
     title: `${ticker(t)} ${formatPrice(t.market_price)}`,
     description: `${ticker(t)} is backed by ${personName(t)} collectibles in Grail's vault. Price, trading flow, holders and contracts.`,
-    openGraph: { images: [t.image_url] },
+    openGraph: { images: [itemImageOf(t)] },
   };
 }
 

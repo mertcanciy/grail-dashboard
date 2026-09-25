@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { GrailToken } from "@/lib/grail/types";
-import { personName, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
+import { itemImageOf, personName, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Change } from "./change";
@@ -10,7 +10,7 @@ import { Change } from "./change";
  * A gToken rendered like a graded-card slab: a label strip on top, the vaulted item in an acrylic well below.
  */
 export function Slab({ token, className, priority }: { token: GrailToken; className?: string; priority?: boolean }) {
-  const image = token.reserves[0]?.image_url ?? token.image_url;
+  const image = itemImageOf(token);
   const vaulted = vaultedItems(token).total;
   return (
     <Link

@@ -25,13 +25,18 @@ export function CountUp({ value, format = "number", delay = 0 }: { value: number
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
   const reduce = useReducedMotion();
+  const shownValue = useRef<number | null>(null);
 
+  // First reveal counts up from zero; later data refreshes glide from the previous figure to the new one.
   useEffect(() => {
     const el = ref.current;
     if (!el || !inView || reduce) return;
-    const controls = animate(0, value, {
-      duration: 1.4,
-      delay,
+    const from = shownValue.current;
+    shownValue.current = value;
+    if (from === value) return;
+    const controls = animate(from ?? 0, value, {
+      duration: from == null ? 1.4 : 0.8,
+      delay: from == null ? delay : 0,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (v) => (el.textContent = render(v, format)),
     });

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { clipToWindow, getHolderCounts, getTokens } from "@/lib/grail/api";
-import { categoryOf, chainOf, personName, quoteAssetOf, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
+import { categoryOf, imageOf, chainOf, personName, quoteAssetOf, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
 import { itemValue } from "@/lib/metrics";
 import { formatNumber, formatUsd } from "@/lib/format";
 import type { Candle } from "@/lib/grail/types";
@@ -27,7 +27,7 @@ export default async function TokensPage() {
     slug: slugOf(t),
     ticker: ticker(t),
     person: personName(t),
-    image: t.image_url,
+    image: imageOf(t),
     category: categoryOf(t),
     chain: chainOf(t.chain_id).name,
     quote: quoteAssetOf(t),

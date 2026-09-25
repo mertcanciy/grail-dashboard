@@ -1,14 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { TokenView } from "@/lib/token-view";
-import { categoryOf, chainOf, grailTradeUrl, personName, poolVersion, quoteAssetOf, ticker } from "@/lib/grail/meta";
+import { categoryOf, imageOf, itemImageOf, chainOf, grailTradeUrl, personName, poolVersion, quoteAssetOf, ticker } from "@/lib/grail/meta";
 import { formatDate, formatNumber, formatPrice, formatUsd } from "@/lib/format";
 import { Change } from "../change";
 import { Reveal } from "../reveal";
 
 export function TokenHeader({ view }: { view: TokenView }) {
   const { token } = view;
-  const hero = token.reserves[0]?.image_url ?? token.image_url;
+  const hero = itemImageOf(token);
   const chain = chainOf(token.chain_id);
 
   const stats = [
@@ -60,7 +60,7 @@ export function TokenHeader({ view }: { view: TokenView }) {
         <Reveal delay={0.1}>
           <div className="flex items-center gap-3">
             <span className="relative size-12 overflow-hidden rounded-2xl bg-muted">
-              <Image src={token.image_url} alt="" fill sizes="48px" className="object-cover" />
+              <Image src={imageOf(token)} alt="" fill sizes="48px" className="object-cover" />
             </span>
             <div>
               <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">{ticker(token)}</h1>

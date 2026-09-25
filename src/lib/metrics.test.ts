@@ -11,7 +11,7 @@ import {
   since,
   summarizeTrades,
 } from "./metrics";
-import { categoryOf, quoteAssetOf, ticker, tokensPerItem } from "./grail/meta";
+import { FALLBACK_IMAGE, categoryOf, itemImageOf, personName, quoteAssetOf, ticker, tokensPerItem } from "./grail/meta";
 import { formatPercent, formatPrice, formatUsd } from "./format";
 
 const NOW = Date.parse("2026-09-25T12:00:00Z");
@@ -214,6 +214,16 @@ describe("meta helpers", () => {
     expect(ticker({ symbol: "gYAMAL", name: "YAMAL" })).toBe("gYAMAL");
     expect(ticker({ symbol: "JENSEN", name: "gJENSEN" })).toBe("gJENSEN");
     expect(ticker({ symbol: "FOO", name: "FOO" })).toBe("gFOO");
+  });
+
+  it("names unknown new listings from Grail's name field", () => {
+    expect(personName({ symbol: "gYAMAL", name: "YAMAL" })).toBe("Lamine Yamal");
+    expect(personName({ symbol: "gZIDANE", name: "ZINEDINE ZIDANE" })).toBe("Zinedine Zidane");
+    expect(personName({ symbol: "gNEW", name: "gNEW" })).toBe("New");
+  });
+
+  it("falls back to the Grail logo when a new token has no images yet", () => {
+    expect(itemImageOf({ image_url: "", reserves: [], offchain_collectibles: [] })).toBe(FALLBACK_IMAGE);
   });
 
   it("derives category, quote asset and redemption size", () => {

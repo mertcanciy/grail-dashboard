@@ -72,9 +72,32 @@ export function baseTicker(t: Pick<GrailToken, "symbol" | "name">) {
   return ticker(t).slice(1);
 }
 
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s-])\p{L}/gu, (m) => m.toUpperCase());
+
+/**
+ * Known legends get their full name. New listings fall back to Grail's `name` field, which is often
+ * the fuller form of the ticker (gBRUN is named "BRUNSON"), so they still read well before anyone updates this map.
+ */
 export function personName(t: Pick<GrailToken, "symbol" | "name">) {
   const base = baseTicker(t);
-  return PEOPLE[base] ?? base.charAt(0) + base.slice(1).toLowerCase();
+  if (PEOPLE[base]) return PEOPLE[base];
+  const name = t.name.trim().replace(/^g(?=[A-Z0-9])/, "");
+  return titleCase(name.length >= base.length ? name : base);
+}
+
+export const FALLBACK_IMAGE = "/grail-logo.jpg";
+
+export function imageOf(t: Pick<GrailToken, "image_url">) {
+  return t.image_url?.trim() || FALLBACK_IMAGE;
+}
+
+/** Photo of the first vaulted item, for slab-style displays. */
+export function itemImageOf(t: Pick<GrailToken, "image_url" | "reserves" | "offchain_collectibles">) {
+  return (
+    t.reserves.find((r) => r.image_url?.trim())?.image_url ??
+    t.offchain_collectibles.find((c) => c.image_url?.trim())?.image_url ??
+    imageOf(t)
+  );
 }
 
 /** URL slug; the Grail API accepts the raw symbol case-insensitively. */
