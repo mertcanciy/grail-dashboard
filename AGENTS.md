@@ -20,6 +20,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Keep pages static/ISR: avoid `searchParams` in pages (it makes them dynamic); prerender variants and switch client-side instead (see Traders).
 - More public Grail endpoints: `reserves/{RESERVE_SYMBOL}/nfts/` (per-slab cert numbers, images, registration tx), `offchain-collectibles/{id}/items`, `global-vault/`, `tokens/statistics`, `profile/{address|username}/overview|holdings|activity` (404 for wallets without a Grail account).
 - Quoter addresses come from `@uniswap/sdk-core` address maps; v3 exact-input quotes return a partial fill instead of reverting when a pool drains, so `capDepth()` treats non-increasing outputs as unfillable.
+- Grail's activity `usd_value` is sometimes wildly wrong (LP adds on stock-paired pools reported as $67B). Always pass the token to `getActivityWindow` so `saneUsdValue()` caps values above 2× market cap.
 - The `grailadmin` wallet is Grail's own inventory; exclude it from collector stats via `isGrailWallet()`.
 - Components rendered inside the sticky header must portal fixed overlays to `document.body` (the header's backdrop-filter creates a containing block).
 - Deploy: `vercel deploy --prod` (project `mertcanciys-projects/grail-dashboard`, alias https://grail-dashboard-seven.vercel.app).

@@ -71,7 +71,7 @@ export const getMarketSnapshot = unstable_cache(
       latest: trades.slice(0, 14),
     };
   },
-  ["market-snapshot-v2"],
+  ["market-snapshot-v3"],
   { revalidate: SNAPSHOT_REVALIDATE, tags: ["grail", "market"] },
 );
 

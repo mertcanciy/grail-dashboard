@@ -5,6 +5,7 @@ import {
   breakdown,
   certLink,
   redeemCandidates,
+  saneUsdValue,
   supplyBacking,
   buySizeHistogram,
   dailyFlow,
@@ -292,5 +293,19 @@ describe("capDepth", () => {
     expect(r.depth.map((d) => d.sellUsd)).toEqual([9, 40, null, null]);
     expect(r.sellCapUsd).toBe(40);
     expect(r.maxBuyFraction).toBe(0.05);
+  });
+});
+
+describe("saneUsdValue", () => {
+  const vlad = { market_cap: "836910.23", market_price: 0.00083 };
+  it("keeps plausible values", () => {
+    expect(saneUsdValue({ type: "BUY", usd_value: "45.67", token_amount: "282", price: "0.16" }, vlad)).toBe(45.67);
+  });
+  it("re-estimates values larger than the whole market cap", () => {
+    const v = saneUsdValue({ type: "LP_ADD", usd_value: "67375042929.73", token_amount: "3835048.55" }, vlad);
+    expect(v).toBeCloseTo(3835048.55 * 0.00083 * 2, 2);
+  });
+  it("drops values that stay impossible", () => {
+    expect(saneUsdValue({ type: "BUY", usd_value: "1e12", token_amount: "1e15", price: "1" }, vlad)).toBe(0);
   });
 });

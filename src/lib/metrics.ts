@@ -313,3 +313,23 @@ export function certLink(reference: string, itemName: string) {
   if (/\bcgc\b/i.test(itemName)) return { grader: "CGC", url: `https://www.cgccards.com/certlookup/${ref}/` };
   return { grader: "PSA", url: `https://www.psacard.com/cert/${ref}` };
 }
+
+const TWO_SIDED = new Set(["LP_ADD", "LP_REMOVE"]);
+
+/**
+ * Grail occasionally reports impossible USD values (LP adds on stock-paired pools came through at $67B when the
+ * whole token is worth under $1M). A single event can't move more than the token's entire market cap (twice that
+ * for liquidity, which moves both sides), so anything above that is re-estimated from amount × price.
+ */
+export function saneUsdValue(
+  a: Pick<Activity, "usd_value" | "token_amount" | "price" | "type">,
+  token: Pick<GrailToken, "market_cap" | "market_price">,
+) {
+  const reported = Number(a.usd_value ?? 0);
+  const marketCap = Number(token.market_cap);
+  if (!Number.isFinite(reported) || reported < 0) return 0;
+  if (!(marketCap > 0) || reported <= marketCap * 2) return reported;
+  const unit = Number(a.price) || token.market_price || 0;
+  const estimate = Number(a.token_amount) * unit * (TWO_SIDED.has(a.type) ? 2 : 1);
+  return Number.isFinite(estimate) && estimate >= 0 && estimate <= marketCap * 2 ? estimate : 0;
+}

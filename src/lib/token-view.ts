@@ -22,7 +22,7 @@ export const loadToken = cache(async (symbol: string) => {
   const token = (await getToken(symbol, opts)) ?? (await getToken(alternateSymbol(symbol), opts));
   if (!token) return null;
   const [activity, holders, vault, quote] = await Promise.all([
-    getActivityWindow(token.symbol, 7).catch(() => ({ events: [], allTimeCount: 0 })),
+    getActivityWindow(token.symbol, 7, 25, token).catch(() => ({ events: [], allTimeCount: 0 })),
     getHolders(token.symbol, 50).catch(() => null),
     getTokenVault(token),
     getItemQuote(token.symbol).catch(() => null),

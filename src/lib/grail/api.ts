@@ -16,6 +16,7 @@ import type {
   TokenActivity,
   VaultItem,
 } from "./types";
+import { saneUsdValue } from "../metrics";
 
 const BASE_URL = "https://grail.xyz/api";
 const USER_AGENT = "grail-dashboard/0.1 (+https://github.com/mertcanciy/grail-dashboard)";
@@ -135,7 +136,7 @@ export function getActivityPage(symbol: string, page = 1, limit = 200) {
  * Walks activity pages (newest first) until events are older than `days`.
  * Pages are offset-based, so events can shift between pages while we read; dedupe by tx+log.
  */
-export async function getActivityWindow(symbol: string, days: number, maxPages = 25) {
+export async function getActivityWindow(symbol: string, days: number, maxPages = 25, token?: GrailToken) {
   const since = Date.now() - days * DAY_MS;
   const seen = new Set<string>();
   const events: TokenActivity[] = [];
@@ -152,7 +153,7 @@ export async function getActivityWindow(symbol: string, days: number, maxPages =
       const key = `${a.tx_hash}:${a.log_index}:${a.type}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      events.push({ ...a, symbol });
+      events.push(token ? { ...a, symbol, usd_value: String(saneUsdValue(a, token)) } : { ...a, symbol });
     }
     if (reachedEnd || !data.next) break;
   }
@@ -162,7 +163,7 @@ export async function getActivityWindow(symbol: string, days: number, maxPages =
 export async function getMarketActivity(tokens: GrailToken[], days = 7) {
   const results = await mapLimit(tokens, 6, async (t) => {
     try {
-      return { symbol: t.symbol, ...(await getActivityWindow(t.symbol, days)) };
+      return { symbol: t.symbol, ...(await getActivityWindow(t.symbol, days, 25, t)) };
     } catch {
       return { symbol: t.symbol, events: [] as TokenActivity[], allTimeCount: 0 };
     }
