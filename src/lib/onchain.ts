@@ -23,7 +23,7 @@ const RPCS: Record<number, string[]> = {
   [robinhood.id]: [...robinhood.rpcUrls.default.http],
 };
 
-function clientFor(chainId: number) {
+export function clientFor(chainId: number) {
   let c = clients.get(chainId);
   if (!c) {
     const chain = chainId === robinhood.id ? robinhood : base;

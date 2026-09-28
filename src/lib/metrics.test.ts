@@ -3,6 +3,9 @@ import type { GrailToken, TokenActivity } from "./grail/types";
 import {
   activityHeatmap,
   breakdown,
+  certLink,
+  redeemCandidates,
+  supplyBacking,
   buySizeHistogram,
   dailyFlow,
   holderConcentration,
@@ -13,6 +16,7 @@ import {
 } from "./metrics";
 import { FALLBACK_IMAGE, categoryOf, itemImageOf, personName, quoteAssetOf, ticker, tokensPerItem } from "./grail/meta";
 import { formatPercent, formatPrice, formatUsd } from "./format";
+import { capDepth } from "./quotes";
 
 const NOW = Date.parse("2026-09-25T12:00:00Z");
 let log = 0;
@@ -246,5 +250,47 @@ describe("format", () => {
     expect(formatUsd(45.67)).toBe("$45.67");
     expect(formatPercent("-17.69", { sign: true })).toBe("−17.7%");
     expect(formatPercent(59.6, { sign: true })).toBe("+59.6%");
+  });
+});
+
+describe("vault helpers", () => {
+  it("finds wallets that can redeem whole items", () => {
+    const c = redeemCandidates(
+      [
+        { address: "0xA", balance: "18513.59", display_name: "0xa", usd_value: "3000" },
+        { address: "0xB", balance: "9999", display_name: "b", username: "bob", usd_value: "1600" },
+        { address: "0xC", balance: "25000", display_name: "c", usd_value: "4000" },
+      ],
+      10000,
+    );
+    expect(c.map((x) => [x.address, x.items])).toEqual([["0xc", 2], ["0xa", 1]]);
+    expect(redeemCandidates([{ address: "0xB", balance: "9999", display_name: "b", usd_value: "1" }], 10000, 0.5)[0].progress).toBeCloseTo(0.9999);
+  });
+
+  it("checks that supply equals vaulted items times tokens per item", () => {
+    const ok = supplyBacking({ total_supply: 220000, reserves: [{ backed_supply: 22, multiplier: 10000 }] as GrailToken["reserves"] });
+    expect(ok.fullyBacked).toBe(true);
+    const off = supplyBacking({ total_supply: 230000, reserves: [{ backed_supply: 22, multiplier: 10000 }] as GrailToken["reserves"] });
+    expect(off.fullyBacked).toBe(false);
+  });
+
+  it("links certificate numbers to the right grader", () => {
+    expect(certLink("82770190", "2023 MEGACRACKS LAMINE YAMAL #423 PSA 10")?.url).toBe("https://www.psacard.com/cert/82770190");
+    expect(certLink("12345678", "Taylor Swift Signed Purple Guitar Beckett Authenticated")?.grader).toBe("Beckett");
+    expect(certLink("gauthentication", "Jensen Huang Signed GPU")).toBeNull();
+  });
+});
+
+describe("capDepth", () => {
+  it("marks sells as unfillable once the pool is drained", () => {
+    const r = capDepth([
+      { fraction: 0.01, tokens: 100, buyUsd: 10, sellUsd: 9 },
+      { fraction: 0.05, tokens: 500, buyUsd: 60, sellUsd: 40 },
+      { fraction: 0.1, tokens: 1000, buyUsd: null, sellUsd: 40 },
+      { fraction: 0.25, tokens: 2500, buyUsd: null, sellUsd: 40 },
+    ]);
+    expect(r.depth.map((d) => d.sellUsd)).toEqual([9, 40, null, null]);
+    expect(r.sellCapUsd).toBe(40);
+    expect(r.maxBuyFraction).toBe(0.05);
   });
 });

@@ -1,5 +1,6 @@
 import type { TokenView } from "@/lib/token-view";
-import { explorerAddress, ticker } from "@/lib/grail/meta";
+import Link from "next/link";
+import { ticker } from "@/lib/grail/meta";
 import { formatNumber, formatShare, formatUsd } from "@/lib/format";
 
 export function HoldersPanel({ view }: { view: TokenView }) {
@@ -34,19 +35,14 @@ export function HoldersPanel({ view }: { view: TokenView }) {
 
       <ol className="mt-5 space-y-3">
         {top.map((h, i) => {
-          const url = explorerAddress(token.chain_id, h.address);
           return (
             <li key={h.address} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 text-sm">
               <span className="tabular text-slate">{i + 1}</span>
               <div className="min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  {url ? (
-                    <a href={url} target="_blank" rel="noreferrer" className="truncate font-medium hover:text-gold-ink">
-                      {h.username ?? h.display_name}
-                    </a>
-                  ) : (
-                    <span className="truncate font-medium">{h.username ?? h.display_name}</span>
-                  )}
+                  <Link href={`/address/${h.address.toLowerCase()}`} className="truncate font-medium hover:text-gold-ink">
+                    {h.username ?? h.display_name}
+                  </Link>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-muted">
                   <div className="h-full rounded-full bg-graphite/75" style={{ width: `${(Number(h.percentage) / max) * 100}%` }} />

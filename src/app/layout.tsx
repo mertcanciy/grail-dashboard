@@ -9,7 +9,13 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"], axes: ["opsz", "wdth"] });
 
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  twitter: { card: "summary_large_image" },
   title: { default: "Grail Pulse: live gToken dashboard", template: "%s · Grail Pulse" },
   description:
     "Prices, trading flow, holders and vault backing for every Grail gToken: tokens backed by PSA 10 cards and real-world collectibles.",

@@ -6,9 +6,15 @@ import type {
   Leaderboard,
   LeaderboardMetric,
   LeaderboardPeriod,
+  MarketStatistics,
   Pack,
   Paginated,
+  ProfileActivity,
+  ProfileHoldings,
+  ProfileOverview,
+  Reserve,
   TokenActivity,
+  VaultItem,
 } from "./types";
 
 const BASE_URL = "https://grail.xyz/api";
@@ -176,6 +182,63 @@ export async function getPacks() {
   const data = await grail<{ packs: Pack[] }>("packs", {}, REVALIDATE.slow);
   return data.packs.filter((p) => p.pack_id !== "TEST");
 }
+
+/** Every registered slab behind one reserve, with its grading certificate number and registration tx. */
+export async function getReserveItems(reserveSymbol: string) {
+  try {
+    const data = await grail<Paginated<VaultItem>>(
+      `reserves/${encodeURIComponent(reserveSymbol)}/nfts/`,
+      { limit: 100, page: 1 },
+      REVALIDATE.slow,
+    );
+    return data.results;
+  } catch {
+    return [];
+  }
+}
+
+export async function getOffchainItems(collectibleId: number) {
+  try {
+    return (await grail<Paginated<VaultItem>>(`offchain-collectibles/${collectibleId}/items`, {}, REVALIDATE.slow)).results;
+  } catch {
+    return [];
+  }
+}
+
+/** Slabs for every reserve and off-chain collectible of a token, keyed by reserve symbol / collectible id. */
+export async function getTokenVault(token: Pick<GrailToken, "reserves" | "offchain_collectibles">) {
+  const [reserves, offchain] = await Promise.all([
+    Promise.all(token.reserves.map(async (r: Reserve) => [r.symbol, await getReserveItems(r.symbol)] as const)),
+    Promise.all(token.offchain_collectibles.map(async (c) => [c.collectible_id, await getOffchainItems(c.collectible_id)] as const)),
+  ]);
+  return {
+    reserves: Object.fromEntries(reserves) as Record<string, VaultItem[]>,
+    offchain: Object.fromEntries(offchain) as Record<number, VaultItem[]>,
+  };
+}
+
+export async function getStatistics() {
+  try {
+    return await grail<MarketStatistics>("tokens/statistics", {}, REVALIDATE.market);
+  } catch {
+    return null;
+  }
+}
+
+/** Grail profile endpoints work for any wallet that has a Grail account; others return 404 (null here). */
+async function profile<T>(address: string, path: string, params: Params = {}) {
+  try {
+    return await grail<T>(`profile/${encodeURIComponent(address)}/${path}`, params, REVALIDATE.market);
+  } catch (e) {
+    if (e instanceof GrailApiError && (e.status === 404 || e.status === 400)) return null;
+    throw e;
+  }
+}
+
+export const getProfileOverview = (address: string) => profile<ProfileOverview>(address, "overview");
+export const getProfileHoldings = (address: string) => profile<ProfileHoldings>(address, "holdings");
+export const getProfileActivity = (address: string, limit = 50) =>
+  profile<{ items: ProfileActivity[]; next_cursor: string | null }>(address, "activity", { limit });
 
 /**
  * Grail only returns buckets that saw trades, so quiet tokens get sparse history reaching far back.

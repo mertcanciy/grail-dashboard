@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTokens } from "@/lib/grail/api";
-import { itemImageOf, personName, slugOf, ticker } from "@/lib/grail/meta";
+import { personName, slugOf, ticker } from "@/lib/grail/meta";
 import { formatPrice } from "@/lib/format";
 import { loadToken } from "@/lib/token-view";
 import { TokenHeader } from "@/components/token/token-header";
 import { FlowPanel } from "@/components/token/flow-panel";
 import { HoldersPanel } from "@/components/token/holders-panel";
 import { BackingPanel } from "@/components/token/backing-panel";
+import { ArbitragePanel } from "@/components/token/arbitrage-panel";
+import { RedeemPanel } from "@/components/token/redeem-panel";
 import { ContractsPanel } from "@/components/token/contracts-panel";
 import { PriceChart } from "@/components/price-chart";
 import { OnchainPanel } from "@/components/onchain-panel";
@@ -37,7 +39,6 @@ export async function generateMetadata(props: PageProps<"/tokens/[symbol]">): Pr
   return {
     title: `${ticker(t)} ${formatPrice(t.market_price)}`,
     description: `${ticker(t)} is backed by ${personName(t)} collectibles in Grail's vault. Price, trading flow, holders and contracts.`,
-    openGraph: { images: [itemImageOf(t)] },
   };
 }
 
@@ -56,6 +57,11 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
         <div className="grid gap-6 lg:grid-cols-2">
           <FlowPanel view={view} />
           <HoldersPanel view={view} />
+        </div>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <ArbitragePanel view={view} />
+          <RedeemPanel view={view} />
         </div>
 
         <BackingPanel view={view} />

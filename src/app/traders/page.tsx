@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getLeaderboard } from "@/lib/grail/api";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/grail/types";
 import { getMarketSnapshot } from "@/lib/market";
@@ -72,7 +73,9 @@ export default async function TradersPage() {
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="tabular w-5 text-slate">{i + 1}</span>
                   <span className="min-w-0">
-                    <span className="block truncate font-medium">{b.label}</span>
+                    <Link href={`/address/${b.key}`} className="block truncate font-medium hover:text-gold-ink">
+                      {b.label}
+                    </Link>
                     <span className="block text-xs text-slate">
                       {formatNumber(b.count)} buys, avg {formatUsd(b.avg)}
                     </span>

@@ -178,3 +178,73 @@ export interface Pack {
   total_initial_units: number;
   total_remaining_units: number;
 }
+
+/** One physical item registered on-chain against a reserve (usually a PSA-graded slab). */
+export interface VaultItem {
+  chain_id?: ChainId;
+  nft_id?: number;
+  item_id?: number;
+  /** Grading certificate number, or a label such as "gauthentication" for non-PSA items. */
+  reference_id: string;
+  image_url: string | null;
+  status: string;
+  register_tx_hash?: string | null;
+  registered_at?: string | null;
+}
+
+export interface ProfileOverview {
+  user_id: number | null;
+  username: string | null;
+  display_name: string;
+  avatar_url: string | null;
+  twitter_username: string | null;
+  wallet_address: string;
+  joined_at: string | null;
+  follower_count: number;
+  following_count: number;
+}
+
+export interface ProfileHolding {
+  token_id: number;
+  chain_id: ChainId;
+  symbol: string;
+  name: string;
+  image_url: string | null;
+  balance_human: string;
+  usd_value: string;
+  market_price: string;
+  pnl_percent: string | null;
+  unpriced: boolean;
+}
+
+export interface ProfileHoldings {
+  tokens: ProfileHolding[];
+  totals: {
+    tokens_usd: string;
+    reserve_nfts_usd: string;
+    pack_nfts_usd: string;
+    lp_usd: string;
+    grail_assets_usd: string;
+  };
+}
+
+export interface ProfileActivity {
+  chain_id: ChainId;
+  kind: string;
+  timestamp: string;
+  token_symbol: string | null;
+  token_name: string | null;
+  amount_usdc: string | null;
+  side: string | null;
+  price: number | null;
+  token_amount: number | null;
+  tx_hash: string | null;
+  image_url: string | null;
+}
+
+export interface MarketStatistics {
+  total_tokens: number;
+  volume_24h_usd: number;
+  distinct_holders: number;
+  market_change_24h_percent: number;
+}

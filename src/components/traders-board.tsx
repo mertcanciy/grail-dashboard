@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/grail/types";
 import { formatDate, formatUsd } from "@/lib/format";
-import { explorerAddress } from "@/lib/grail/meta";
 import { shortAddress } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import { Segmented } from "./segmented";
@@ -94,14 +94,14 @@ export function TradersBoard({ boards }: { boards: Boards }) {
                       )}
                     </td>
                     <td className="py-3">
-                      <a href={explorerAddress(8453, r.wallet)} target="_blank" rel="noreferrer" className="group">
+                      <Link href={`/address/${r.wallet.toLowerCase()}`} className="group">
                         <span className="block font-medium group-hover:text-gold-ink">{r.name ?? shortAddress(r.wallet)}</span>
                         {(r.name || !r.isGrailUser) && (
                           <span className="block text-xs text-slate">
                             {[r.name && shortAddress(r.wallet), !r.isGrailUser && "No Grail account"].filter(Boolean).join(", ")}
                           </span>
                         )}
-                      </a>
+                      </Link>
                     </td>
                     <Pnl value={r.realized} dim={metric === "unrealized"} />
                     <Pnl value={r.unrealized} dim={metric === "realized"} />

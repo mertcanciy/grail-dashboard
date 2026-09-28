@@ -74,7 +74,11 @@ export function TradeTape({
                     )}
                   </td>
                 )}
-                <td className="max-w-40 truncate py-2.5 pr-3 text-slate">{e.username ?? e.display_name}</td>
+                <td className="max-w-40 truncate py-2.5 pr-3 text-slate">
+                  <Link href={`/address/${e.address.toLowerCase()}`} className="hover:text-graphite">
+                    {e.username ?? e.display_name}
+                  </Link>
+                </td>
                 <td className="tabular py-2.5 pr-3 text-right font-medium">{formatUsd(Number(e.usd_value ?? 0))}</td>
                 <td className="tabular py-2.5 pr-3 text-right text-slate">{formatTokenAmount(e.token_amount)}</td>
                 <td className="py-2.5 text-right text-slate">

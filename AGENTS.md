@@ -18,5 +18,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Uniswap v4 pool state is read from `PoolManager.extsload` (pools mapping at slot 6), so no StateView address is needed per chain.
 - Market-wide aggregates live in `getMarketSnapshot()` (`src/lib/market.ts`). Cache only aggregates there (data cache items max 2 MB), never raw event arrays. Bump the key (`market-snapshot-vN`) when the shape changes.
 - Keep pages static/ISR: avoid `searchParams` in pages (it makes them dynamic); prerender variants and switch client-side instead (see Traders).
+- More public Grail endpoints: `reserves/{RESERVE_SYMBOL}/nfts/` (per-slab cert numbers, images, registration tx), `offchain-collectibles/{id}/items`, `global-vault/`, `tokens/statistics`, `profile/{address|username}/overview|holdings|activity` (404 for wallets without a Grail account).
+- Quoter addresses come from `@uniswap/sdk-core` address maps; v3 exact-input quotes return a partial fill instead of reverting when a pool drains, so `capDepth()` treats non-increasing outputs as unfillable.
+- The `grailadmin` wallet is Grail's own inventory; exclude it from collector stats via `isGrailWallet()`.
+- Components rendered inside the sticky header must portal fixed overlays to `document.body` (the header's backdrop-filter creates a containing block).
 - Deploy: `vercel deploy --prod` (project `mertcanciys-projects/grail-dashboard`, alias https://grail-dashboard-seven.vercel.app).
 - Pinned dependency versions are all at least 7 days old at install time; keep that rule when upgrading.

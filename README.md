@@ -6,9 +6,13 @@ An independent, live dashboard for [Grail](https://grail.xyz), where PSA 10 card
 
 - **Overview** (`/`): market-wide KPIs, a draggable marquee of gToken "slabs", a five-lens breakdown of where trading happens (gToken, category, chain & quote pair, action type, wallet), buy-size behavior, a UTC activity heatmap, movers and the latest swaps.
 - **gTokens** (`/tokens`): sortable, filterable table with 7-day sparklines, holders and the cost of one full redeemable item.
-- **gToken detail** (`/tokens/[symbol]`): price chart (24h / 7d / 30d), 7-day buy/sell flow, holder concentration, vaulted items, every contract address, and a panel that reads pool state straight from the chain.
+- **gToken detail** (`/tokens/[symbol]`): price chart (24h / 7d / 30d), 7-day buy/sell flow, holder concentration, the real cost to buy or sell one redeemable item through the pool (with a market-depth table), wallets that could redeem today, proof of vault (every slab with its grading certificate and on-chain registration, plus a supply check), every contract address, and a panel that reads pool state straight from the chain.
+- **Vault** (`/vault`): the whole vault registry, recently vaulted items, supply checks per gToken and every collector wallet that could redeem an item.
+- **Wallets** (`/address/[address]`): holdings, progress toward redeeming each item, PnL and recent activity. Wallets without a Grail account fall back to on-chain balances.
 - **Traders** (`/traders`): Grail's PnL leaderboard plus the week's biggest buyers.
 - **Packs** (`/packs`): every pack series, price and sell-through.
+- **Search** (⌘K or `/`): gTokens, wallets and usernames, certificate numbers and contract addresses. The index (`/api/search`) is rebuilt every 5 minutes and searched entirely in the browser.
+- **Share images**: every page and gToken gets a generated Open Graph image with live price and a 7-day sparkline.
 
 ## Data sources
 
@@ -16,6 +20,7 @@ An independent, live dashboard for [Grail](https://grail.xyz), where PSA 10 card
 | --- | --- | --- |
 | `https://grail.xyz/api` (public, no auth) | tokens, OHLCV, activity, holders, PnL leaderboard, packs | server only; the API sends no CORS headers for other origins |
 | Base and Robinhood Chain public RPCs | totalSupply, Uniswap v3 `slot0`/reserves, Uniswap v4 pool state via `PoolManager.extsload` | browser, via viem + Multicall3 |
+| Uniswap v3 QuoterV2 / v4 Quoter | executable buy/sell cost for 1%–100% of one item | server, Multicall3, cached 5 min (`src/lib/quotes.ts`) |
 
 Market-wide metrics (average buy, lenses, heatmap, top buyers) are computed from a rolling 7-day window of activity pages.
 

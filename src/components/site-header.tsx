@@ -6,10 +6,12 @@ import { useState } from "react";
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import { cn } from "@/lib/utils";
 import { GrailMark } from "./grail-mark";
+import { CommandMenu } from "./command-menu";
 
 const NAV = [
   { href: "/", label: "Overview" },
   { href: "/tokens", label: "gTokens" },
+  { href: "/vault", label: "Vault" },
   { href: "/traders", label: "Traders" },
   { href: "/packs", label: "Packs" },
 ];
@@ -65,14 +67,17 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <a
-          href="https://grail.xyz"
-          target="_blank"
-          rel="noreferrer"
-          className="hidden rounded-full bg-graphite px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-black md:inline-flex"
-        >
-          Trade on Grail
-        </a>
+        <div className="flex shrink-0 items-center gap-2">
+          <CommandMenu />
+          <a
+            href="https://grail.xyz"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden rounded-full bg-graphite px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-black xl:inline-flex"
+          >
+            Trade on Grail
+          </a>
+        </div>
       </motion.header>
     </div>
   );

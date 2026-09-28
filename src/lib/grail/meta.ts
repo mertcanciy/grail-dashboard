@@ -133,3 +133,10 @@ export function vaultedItems(t: Pick<GrailToken, "reserves" | "offchain_collecti
 export function grailTradeUrl(t: Pick<GrailToken, "symbol">) {
   return `https://grail.xyz/trade/${slugOf(t)}`;
 }
+
+/** Grail's own operational wallets; they hold inventory, not collector positions. */
+const GRAIL_WALLET_NAMES = new Set(["grailadmin"]);
+
+export function isGrailWallet(name: string | null | undefined) {
+  return !!name && GRAIL_WALLET_NAMES.has(name.trim().toLowerCase());
+}

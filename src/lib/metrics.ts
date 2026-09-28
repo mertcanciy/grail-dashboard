@@ -196,6 +196,7 @@ export function marketLenses(events: TokenActivity[], tokens: GrailToken[]) {
   const wallet = breakdown(trades, (e) => e.address.toLowerCase(), (key) => ({
     label: names.get(key) ?? shortAddress(key),
     sublabel: shortAddress(key),
+    href: `/address/${key}`,
   }));
 
   return { token, category, venue, action, wallet } satisfies Record<LensKey, BreakdownRow[]>;
@@ -260,4 +261,55 @@ export function shortAddress(addr: string, head = 6, tail = 4) {
 /** Cost in USD to assemble enough gTokens to redeem one physical item. */
 export function itemValue(price: number | null, tokensPerItem: number) {
   return (price ?? 0) * tokensPerItem;
+}
+
+export interface RedeemCandidate {
+  address: string;
+  name: string;
+  balance: number;
+  /** Whole items this wallet could redeem right now. */
+  items: number;
+  /** Balance as a fraction of one item (1.4 = one item and 40% of the next). */
+  progress: number;
+  usd: number;
+}
+
+/** Wallets holding at least `minProgress` of one redeemable item, largest first. */
+export function redeemCandidates(
+  holders: Pick<Holder, "address" | "balance" | "display_name" | "username" | "usd_value">[],
+  perItem: number,
+  minProgress = 1,
+): RedeemCandidate[] {
+  if (perItem <= 0) return [];
+  return holders
+    .map((h) => {
+      const balance = Number(h.balance);
+      return {
+        address: h.address.toLowerCase(),
+        name: h.username ?? h.display_name,
+        balance,
+        items: Math.floor(balance / perItem + 1e-9),
+        progress: balance / perItem,
+        usd: Number(h.usd_value) || 0,
+      };
+    })
+    .filter((c) => Number.isFinite(c.progress) && c.progress >= minProgress)
+    .sort((a, b) => b.progress - a.progress);
+}
+
+/** Does the token's supply equal exactly what its vaulted items mint? */
+export function supplyBacking(t: Pick<GrailToken, "reserves" | "total_supply">) {
+  const expected = t.reserves.reduce((s, r) => s + (r.vaulted_cards_count ?? r.backed_supply ?? 0) * r.multiplier, 0);
+  const actual = t.total_supply;
+  const diff = expected ? (actual - expected) / expected : actual ? 1 : 0;
+  return { expected, actual, fullyBacked: Math.abs(diff) < 1e-6, diff };
+}
+
+/** Link to the grader's public verification page when the reference looks like a certificate number. */
+export function certLink(reference: string, itemName: string) {
+  const ref = reference.trim();
+  if (!/^\d{6,10}$/.test(ref)) return null;
+  if (/beckett|\bbas\b|\bbgs\b/i.test(itemName)) return { grader: "Beckett", url: `https://www.beckett.com/grading/card-lookup?item_type=BGS&item_id=${ref}` };
+  if (/\bcgc\b/i.test(itemName)) return { grader: "CGC", url: `https://www.cgccards.com/certlookup/${ref}/` };
+  return { grader: "PSA", url: `https://www.psacard.com/cert/${ref}` };
 }
