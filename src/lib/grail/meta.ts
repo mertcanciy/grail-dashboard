@@ -57,6 +57,7 @@ const PEOPLE: Record<string, string> = {
   KAI: "Kai Cenat",
   VITALIK: "Vitalik Buterin",
   JENSEN: "Jensen Huang",
+  VLAD: "Vlad Tenev",
 };
 
 /** Grail's API is inconsistent: most tokens have symbol "gX", a few have name "gX" and symbol "X". */

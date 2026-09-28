@@ -41,8 +41,11 @@ export function Hero({ kpis, tokens, updatedAt }: { kpis: HeroKpis; tokens: Grai
             Every gToken, every trade, every card in the vault.
           </h1>
           <p className="mt-5 max-w-2xl text-[17px] leading-relaxed text-slate">
-            Grail vaults PSA 10 cards and signed memorabilia, then issues one tradable token per legend. gYAMAL is backed by
-            Lamine Yamal cards, gSWIFT by Taylor Swift items. This is the live view of that market.
+            Grail vaults PSA 10 cards and signed memorabilia, then issues one tradable token per legend. This is the live view
+            of that market.
+          </p>
+          <p className="mt-3 font-display text-xl font-semibold tracking-tight">
+            <span className="text-slate">We The Market?</span> <span className="text-graphite">WE THE MARKET.</span>
           </p>
         </Reveal>
 
