@@ -30,6 +30,7 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
   const itemName = token.reserves[0]?.name ?? token.name;
   const q = encodeURIComponent(searchQuery(itemName));
   const isCard = /psa|card/i.test(`${itemName} ${token.reserves[0]?.category ?? ""}`);
+  const piece = isCard ? "card" : "item";
 
   return (
     <section className="panel p-5 sm:p-7" aria-labelledby="arb-title">
@@ -145,9 +146,55 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
       <div className="mt-6 rounded-2xl bg-mist/70 p-4">
         <p className="text-sm font-medium">Compare with the physical market</p>
         <p className="mt-1 text-sm text-slate">
-          If the same {isCard ? "graded card" : "item"} sells for less than the buy cost above, it&apos;s cheaper to buy the physical
-          piece; if it sells for more than the sell proceeds, redeeming tokens for it can pay off. Check live prices before acting:
-          redemptions ship in about five business days and marketplaces charge fees.
+          The same {piece} also trades outside Grail. When its market price and the token price drift apart, there are two ways to
+          close the gap:
+        </p>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div className="rounded-xl bg-paper p-3.5">
+            <dt className="font-medium">Tokens into the {piece}</dt>
+            <dd className="mt-1 text-slate">
+              {full?.buyUsd != null ? (
+                <>
+                  Buy {formatNumber(perItem)} {t} for{" "}
+                  <span className="tabular font-medium text-graphite">{formatUsd(full.buyUsd, { compact: true })}</span>, redeem them
+                  and sell the {piece}. Worth it when the {piece} sells for more than that.
+                </>
+              ) : (
+                <>
+                  Buy {formatNumber(perItem)} {t}, redeem them and sell the {piece}. Not possible from the pool alone right now: it
+                  can&apos;t supply that many tokens.
+                </>
+              )}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-paper p-3.5">
+            <dt className="font-medium">The {piece} into tokens</dt>
+            <dd className="mt-1 text-slate">
+              {full?.sellUsd != null ? (
+                <>
+                  Buy the {piece}, submit it to Grail&apos;s vault and sell the {formatNumber(perItem)} {t} it becomes for{" "}
+                  <span className="tabular font-medium text-graphite">{formatUsd(full.sellUsd, { compact: true })}</span>. Worth it when
+                  the {piece} costs less than that.
+                </>
+              ) : (
+                <>
+                  Buy the {piece}, submit it to Grail&apos;s vault and sell the {formatNumber(perItem)} {t} it becomes. The pool
+                  can&apos;t absorb that many right now
+                  {quote?.sellCapUsd != null ? `; it runs out at about ${formatUsd(quote.sellCapUsd, { compact: true })}` : ""}.
+                </>
+              )}
+            </dd>
+          </div>
+        </dl>
+        {full?.sellUsd != null && (
+          <p className="mt-3 text-sm text-slate">
+            Already hold {formatNumber(perItem)} {t}? Redeeming beats selling them when the {piece} is worth more than{" "}
+            <span className="tabular font-medium text-graphite">{formatUsd(full.sellUsd, { compact: true })}</span>.
+          </p>
+        )}
+        <p className="mt-3 text-xs leading-relaxed text-slate">
+          Not included: marketplace fees (eBay takes around 13%), shipping, and waiting time. Redemptions ship in about five business
+          days, Grail checks eligibility before accepting an item into the vault, and prices can move in the meantime.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <a
