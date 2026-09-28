@@ -261,7 +261,17 @@ const DraggableMarquee = ({
             });
         });
 
-        gsap.ticker.add(update);
+        // Only animate while the marquee is on screen; scrolling past it stops the per-frame work.
+        let ticking = false;
+        const setTicking = (on) => {
+            if (on === ticking) return;
+            ticking = on;
+            if (on) gsap.ticker.add(update);
+            else gsap.ticker.remove(update);
+        };
+        const visibilityObserver = new IntersectionObserver(([entry]) => setTicking(entry.isIntersecting));
+        visibilityObserver.observe(root);
+        observers.push(visibilityObserver);
 
         return () => {
             root.removeEventListener("keydown", handleKeyDown);
@@ -320,7 +330,7 @@ const DraggableMarquee = ({
         >
             <div
                 ref={trackRef}
-                className={`flex w-max items-center ${gapClassName} ${trackClassName}`}
+                className={`flex w-max items-center will-change-transform ${gapClassName} ${trackClassName}`}
             >
                 {duplicatedItems.map((item, index) => (
                     <div

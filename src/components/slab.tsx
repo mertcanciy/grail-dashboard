@@ -37,7 +37,7 @@ export function Slab({ token, className, priority }: { token: GrailToken; classN
           sizes="212px"
           priority={priority}
           draggable={false}
-          className="object-contain p-3 drop-shadow-[0_10px_14px_rgb(23_25_30/0.18)] transition-transform duration-500 group-hover:scale-[1.03]"
+          className="object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
         />
         <div className="pointer-events-none absolute inset-0 rounded-[15px] bg-[linear-gradient(115deg,transparent_35%,rgb(255_255_255/0.55)_48%,transparent_60%)] opacity-60" />
       </div>
