@@ -16,6 +16,7 @@ const GROUPS: { kind: SearchKind; label: string }[] = [
   { kind: "contract", label: "Contracts" },
 ];
 const PER_GROUP = 6;
+const USERNAME = /^[a-z0-9_.-]{2,32}$/;
 
 let indexPromise: Promise<SearchEntry[]> | null = null;
 function loadIndex() {
@@ -60,6 +61,8 @@ export function CommandMenu() {
   const [index, setIndex] = useState<SearchEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
+  // Exact-username lookups against Grail for accounts the prebuilt index doesn't cover, cached per query.
+  const [lookups, setLookups] = useState<Record<string, Result | null | "pending">>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
 
@@ -82,17 +85,42 @@ export function CommandMenu() {
   }, [show]);
 
   const q = query.trim().toLowerCase();
+  const indexHasExactWallet = useMemo(() => !!index?.some((e) => e.k === "wallet" && e.l.toLowerCase() === q), [index, q]);
+
+  useEffect(() => {
+    if (!USERNAME.test(q) || indexHasExactWallet || q in lookups) return;
+    const timer = window.setTimeout(() => {
+      setLookups((l) => ({ ...l, [q]: "pending" }));
+      fetch(`/api/lookup?u=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((p: { username: string; wallet: string; avatar: string | null } | null) =>
+          setLookups((l) => ({
+            ...l,
+            [q]: p ? { k: "wallet", l: p.username, s: `${p.wallet.slice(0, 6)}…${p.wallet.slice(-4)}`, h: `/address/${p.wallet}`, i: p.avatar ?? undefined } : null,
+          })),
+        )
+        .catch(() => setLookups((l) => ({ ...l, [q]: null })));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [q, indexHasExactWallet, lookups]);
+
+  const lookup = lookups[q];
   const results = useMemo<Result[]>(() => {
     const direct = directResults(q);
     if (!q) return index ? index.filter((e) => e.k === "token").slice(0, 8) : [];
-    if (!index) return direct;
+    const extra = lookup && lookup !== "pending" ? lookup : null;
+    if (!index) return extra ? [...direct, extra] : direct;
     const scored = index
       .map((e) => ({ e, s: score(e, q) }))
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s);
-    const grouped = GROUPS.flatMap((g) => scored.filter((x) => x.e.k === g.kind).slice(0, PER_GROUP).map((x) => x.e));
+    const grouped = GROUPS.flatMap((g) => {
+      const items: Result[] = scored.filter((x) => x.e.k === g.kind).slice(0, PER_GROUP).map((x) => x.e);
+      if (g.kind === "wallet" && extra && !items.some((i) => i.h === extra.h)) items.unshift(extra);
+      return items;
+    });
     return [...direct, ...grouped];
-  }, [index, q]);
+  }, [index, q, lookup]);
 
   const close = () => {
     setOpen(false);
@@ -181,7 +209,11 @@ export function CommandMenu() {
                 {failed && <li className="px-3 py-6 text-center text-sm text-slate">Search didn&apos;t load. Close and try again.</li>}
                 {!failed && !index && !results.length && <li className="px-3 py-6 text-center text-sm text-slate">Loading…</li>}
                 {!failed && index && q && !results.length && (
-                  <li className="px-3 py-6 text-center text-sm text-slate">Nothing matches &ldquo;{query}&rdquo;.</li>
+                  <li className="px-3 py-6 text-center text-sm text-slate">
+                    {lookup === "pending" || (USERNAME.test(q) && !(q in lookups))
+                      ? "Checking Grail accounts…"
+                      : <>Nothing matches &ldquo;{query}&rdquo;.</>}
+                  </li>
                 )}
                 {results.map((r, i) => {
                   const heading = i === 0 || results[i - 1].k !== r.k ? (q ? GROUPS.find((g) => g.kind === r.k)?.label : "gTokens") : null;
