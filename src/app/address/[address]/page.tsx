@@ -111,7 +111,42 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
           {w.rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate">This wallet doesn&apos;t hold any gTokens right now.</p>
           ) : (
-            <div className="mt-3 overflow-x-auto">
+            <>
+            <ul className="mt-3 divide-y divide-hairline sm:hidden">
+              {w.rows.map((r) => (
+                <li key={r.token.symbol} className="py-3">
+                  <Link href={`/tokens/${slugOf(r.token)}`} className="flex items-center gap-3">
+                    <span className="relative size-10 shrink-0 overflow-hidden rounded-xl bg-muted">
+                      <Image src={imageOf(r.token)} alt="" fill sizes="40px" className="object-cover" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="font-medium">{ticker(r.token)}</span>
+                        <span className="tabular font-semibold">{formatUsd(r.usd, { compact: true })}</span>
+                      </span>
+                      <span className="flex items-baseline justify-between gap-2 text-xs text-slate">
+                        <span className="truncate">
+                          {formatTokenAmount(r.balance)} {ticker(r.token)}
+                        </span>
+                        {w.source === "grail" && <Change value={r.pnlPercent} className="text-xs" />}
+                      </span>
+                    </span>
+                  </Link>
+                  <div className="mt-2 flex items-center gap-2 pl-[52px]">
+                    <div className="h-1.5 flex-1 rounded-full bg-muted">
+                      <div
+                        className={cn("h-full rounded-full", r.itemProgress >= 1 ? "bg-up" : "bg-gold")}
+                        style={{ width: `${Math.min(100, r.itemProgress * 100)}%` }}
+                      />
+                    </div>
+                    <span className="tabular shrink-0 text-xs text-slate">
+                      {r.itemProgress >= 1 ? `${Math.floor(r.itemProgress + 1e-9)} redeemable` : `${formatShare(r.itemProgress)} of an item`}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="border-b border-hairline text-left text-xs text-slate">
@@ -163,6 +198,7 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
 

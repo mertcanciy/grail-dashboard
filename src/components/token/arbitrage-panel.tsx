@@ -91,17 +91,14 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
             </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
+          <div className="mt-6">
+            <table className="w-full text-sm">
               <caption className="mb-2 text-left text-sm font-medium text-graphite">Market depth</caption>
               <thead>
                 <tr className="border-b border-hairline text-left text-xs text-slate">
                   <th className="py-2 font-medium">Size</th>
-                  <th className="py-2 text-right font-medium">{t}</th>
                   <th className="py-2 text-right font-medium">Buy cost</th>
-                  <th className="py-2 text-right font-medium">Impact</th>
                   <th className="py-2 text-right font-medium">Sell proceeds</th>
-                  <th className="py-2 text-right font-medium">Impact</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-hairline">
@@ -109,15 +106,27 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
                   const spot = quote.spotUsd * d.fraction;
                   return (
                     <tr key={d.fraction}>
-                      <td className="py-2">{d.fraction === 1 ? "1 item" : `${formatShare(d.fraction)} of an item`}</td>
-                      <td className="tabular py-2 text-right text-slate">{formatNumber(d.tokens, { compact: true })}</td>
-                      <td className="tabular py-2 text-right">{d.buyUsd != null ? formatUsd(d.buyUsd, { compact: true }) : "Can't fill"}</td>
-                      <td className="py-2 text-right">
-                        <Pct value={impact(d.buyUsd, spot)} />
+                      <td className="py-2">
+                        <span className="block">{d.fraction === 1 ? "1 item" : `${formatShare(d.fraction)} of an item`}</span>
+                        <span className="tabular block text-xs text-slate">
+                          {formatNumber(d.tokens, { compact: true })} {t}
+                        </span>
                       </td>
-                      <td className="tabular py-2 text-right">{d.sellUsd != null ? formatUsd(d.sellUsd, { compact: true }) : "Can't fill"}</td>
                       <td className="py-2 text-right">
-                        <Pct value={impact(d.sellUsd, spot)} invert />
+                        <span className="tabular block">{d.buyUsd != null ? formatUsd(d.buyUsd, { compact: true }) : "Can't fill"}</span>
+                        {d.buyUsd != null && (
+                          <span className="block text-xs">
+                            <Pct value={impact(d.buyUsd, spot)} />
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <span className="tabular block">{d.sellUsd != null ? formatUsd(d.sellUsd, { compact: true }) : "Can't fill"}</span>
+                        {d.sellUsd != null && (
+                          <span className="block text-xs">
+                            <Pct value={impact(d.sellUsd, spot)} invert />
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

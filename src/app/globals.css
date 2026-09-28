@@ -107,6 +107,9 @@
 }
 
 @utility panel {
+  /* Grid items default to min-width: auto, which lets a wide table push the panel past the viewport on phones
+     instead of scrolling inside it. */
+  min-width: 0;
   background: var(--paper);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-xl);
