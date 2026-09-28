@@ -17,15 +17,21 @@ import { TradeTape } from "@/components/trade-tape";
 
 export const revalidate = 300;
 
+/** How many of the largest gTokens to prerender at build; each one costs dozens of Grail and RPC calls. */
+const PRERENDER = 8;
+
 /**
- * Known tokens are prerendered at build. Tokens listed after the build render on their first visit and are then
- * cached like the rest (dynamicParams defaults to true). If Grail is unreachable during a build, skip prerendering
- * rather than failing the deploy.
+ * The largest gTokens are prerendered at build. The rest (and anything listed later) render on their first visit
+ * and are then cached like the others (dynamicParams defaults to true). Keeping the build set small means one slow
+ * Grail response is far less likely to fail a deploy; if Grail is unreachable, skip prerendering entirely.
  */
 export async function generateStaticParams() {
   try {
     const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
-    return tokens.map((t) => ({ symbol: slugOf(t) }));
+    return [...tokens]
+      .sort((a, b) => Number(b.market_cap) - Number(a.market_cap))
+      .slice(0, PRERENDER)
+      .map((t) => ({ symbol: slugOf(t) }));
   } catch {
     return [];
   }

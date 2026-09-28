@@ -12,8 +12,14 @@ import {
 } from "./metrics";
 import { getItemQuote } from "./quotes";
 
+/** Grail symbols are inconsistent ("gYAMAL" but "JENSEN"), so accept a URL with or without the leading "g". */
+function alternateSymbol(symbol: string) {
+  return /^g[a-z0-9]/i.test(symbol) ? symbol.slice(1) : `g${symbol}`;
+}
+
 export const loadToken = cache(async (symbol: string) => {
-  const token = await getToken(symbol, { timeframe: "1h", windowDays: 7 });
+  const opts = { timeframe: "1h", windowDays: 7 } as const;
+  const token = (await getToken(symbol, opts)) ?? (await getToken(alternateSymbol(symbol), opts));
   if (!token) return null;
   const [activity, holders, vault, quote] = await Promise.all([
     getActivityWindow(token.symbol, 7).catch(() => ({ events: [], allTimeCount: 0 })),

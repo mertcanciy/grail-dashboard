@@ -38,15 +38,33 @@ export class GrailApiError extends Error {
   }
 }
 
+const ATTEMPTS = 3;
+const TIMEOUT_MS = 12_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * One slow or dropped response from Grail used to fail a whole build or page render. Time out each attempt and
+ * retry network errors and 5xx/429 responses with a short backoff; 4xx answers are returned immediately.
+ */
 async function grail<T>(path: string, params: Params = {}, revalidate: number = REVALIDATE.market): Promise<T> {
   const url = new URL(`${BASE_URL}/${path}`);
   for (const [k, v] of Object.entries(params)) if (v != null) url.searchParams.set(k, String(v));
-  const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": USER_AGENT },
-    next: { revalidate, tags: ["grail"] },
-  });
-  if (!res.ok) throw new GrailApiError(`${path}${url.search}`, res.status);
-  return res.json() as Promise<T>;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": USER_AGENT },
+        next: { revalidate, tags: ["grail"] },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.ok) return (await res.json()) as T;
+      const error = new GrailApiError(`${path}${url.search}`, res.status);
+      if ((res.status < 500 && res.status !== 429) || attempt >= ATTEMPTS) throw error;
+    } catch (e) {
+      if (e instanceof GrailApiError && ((e.status < 500 && e.status !== 429) || attempt >= ATTEMPTS)) throw e;
+      if (!(e instanceof GrailApiError) && attempt >= ATTEMPTS) throw e;
+    }
+    await sleep(400 * 2 ** (attempt - 1));
+  }
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
