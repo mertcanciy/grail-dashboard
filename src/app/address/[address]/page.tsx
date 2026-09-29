@@ -63,9 +63,9 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
           <div className="min-w-0">
             <h1 className="truncate font-display text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{name}</h1>
             <p className="mt-1 text-sm text-slate">
-              {w.overview
+              {w.overview?.user_id != null
                 ? `Grail member${w.overview.joined_at ? ` since ${formatDate(w.overview.joined_at)}` : ""}`
-                : "No Grail account. Balances read directly from the chain."}
+                : `No Grail account${w.source === "chain" ? ". Balances read directly from the chain." : ""}`}
               {w.overview?.twitter_username && (
                 <>
                   {", "}
