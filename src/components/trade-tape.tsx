@@ -1,21 +1,9 @@
 import Link from "next/link";
 import type { Activity, GrailToken, TokenActivity } from "@/lib/grail/types";
-import { explorerTx, ticker } from "@/lib/grail/meta";
-import { formatTokenAmount, formatUsd, timeAgo } from "@/lib/format";
+import { activityLabel, explorerTx, ticker } from "@/lib/grail/meta";
+import { formatTokenAmount, formatUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const LABELS: Record<string, string> = {
-  BUY: "Buy",
-  SELL: "Sell",
-  LP_ADD: "Add liquidity",
-  LP_REMOVE: "Remove liquidity",
-  LP_FEE_COLLECT: "Collect fees",
-  PACK_CLAIM: "Pack claim",
-  PACK_NFT_BUY: "Pack NFT buy",
-  PACK_NFT_SELL: "Pack NFT sell",
-  PACK_NFT_TRANSFER_IN: "Pack NFT in",
-  PACK_NFT_TRANSFER_OUT: "Pack NFT out",
-};
+import { TimeAgo } from "./time-ago";
 
 export function TradeTape({
   events,
@@ -60,7 +48,7 @@ export function TradeTape({
                       e.type !== "BUY" && e.type !== "SELL" && "bg-muted text-slate",
                     )}
                   >
-                    {LABELS[e.type] ?? e.type}
+                    {activityLabel(e.type)}
                   </span>
                 </td>
                 {showToken && (
@@ -84,10 +72,10 @@ export function TradeTape({
                 <td className="py-2.5 text-right text-slate">
                   {txUrl ? (
                     <a href={txUrl} target="_blank" rel="noreferrer" className="hover:text-graphite" title="View transaction">
-                      {timeAgo(e.block_timestamp, now)}
+                      <TimeAgo iso={e.block_timestamp} serverNow={now} />
                     </a>
                   ) : (
-                    timeAgo(e.block_timestamp, now)
+                    <TimeAgo iso={e.block_timestamp} serverNow={now} />
                   )}
                 </td>
               </tr>

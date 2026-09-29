@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { GrailToken } from "@/lib/grail/types";
-import { itemImageOf, personName, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
+import { itemImageOf, personName, primaryReserve, slugOf, ticker, tokensPerItem, vaultedItems } from "@/lib/grail/meta";
 import { formatNumber, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Change } from "./change";
@@ -32,7 +32,7 @@ export function Slab({ token, className, priority }: { token: GrailToken; classN
       <div className="relative mt-2 aspect-[4/5] overflow-hidden rounded-[15px] bg-[radial-gradient(120%_80%_at_50%_0%,#ffffff_0%,#eef0f4_60%,#e4e7ed_100%)]">
         <Image
           src={image}
-          alt={token.reserves[0]?.name ?? ticker(token)}
+          alt={primaryReserve(token)?.name ?? ticker(token)}
           fill
           sizes="212px"
           priority={priority}

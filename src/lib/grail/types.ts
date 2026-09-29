@@ -240,6 +240,8 @@ export interface ProfileActivity {
   token_amount: number | null;
   tx_hash: string | null;
   image_url: string | null;
+  /** Achievement title or pack id for `achievement` / `pack_open` rows. */
+  detail?: string | null;
 }
 
 export interface MarketStatistics {

@@ -1,8 +1,12 @@
 import type { GrailToken } from "@/lib/grail/types";
+import { ACTIVITY_PAGE_SIZE, MAX_ACTIVITY_PAGES } from "@/lib/grail/api";
+import { formatNumber } from "@/lib/format";
 import { CountUp, type CountFormat } from "./count-up";
 import { Slab } from "./slab";
 import { SlabMarquee } from "./slab-marquee";
 import { Reveal } from "./reveal";
+import { Freshness } from "./freshness";
+import { TimeAgo } from "./time-ago";
 
 export interface HeroKpis {
   marketCap: number;
@@ -22,20 +26,50 @@ const KPI_ORDER: { key: keyof HeroKpis; label: string; format: CountFormat }[] =
   { key: "vaulted", label: "Items in the vault", format: "number" },
 ];
 
-export function Hero({ kpis, tokens, updatedAt }: { kpis: HeroKpis; tokens: GrailToken[]; updatedAt: number }) {
+export function Hero({
+  kpis,
+  tokens,
+  updatedAt,
+  flowAt,
+  coverage,
+  maxAgeSec,
+}: {
+  kpis: HeroKpis;
+  tokens: GrailToken[];
+  updatedAt: number;
+  /** When the 7-day trading snapshot was computed; it is cached separately from prices. */
+  flowAt: number;
+  /** Tokens missing from, or only partly counted in, the 7-day stats. */
+  coverage?: { failed: string[]; interrupted: string[]; truncated: string[] };
+  maxAgeSec: number;
+}) {
+  const unanswered = coverage ? coverage.failed.length + coverage.interrupted.length : 0;
+  const truncated = coverage?.truncated.length ?? 0;
   const featured = [...tokens].sort((a, b) => Number(b.market_cap) - Number(a.market_cap));
-  const time = new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 
   return (
     <section className="relative overflow-hidden pb-4 pt-10 sm:pt-16">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <Reveal>
-          <p className="flex items-center gap-2 text-sm text-slate">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-up opacity-40" />
-              <span className="relative inline-flex size-2 rounded-full bg-up" />
-            </span>
-            Live from Grail and the chain, refreshed {time} UTC
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate">
+            <Freshness at={updatedAt} maxAgeSec={maxAgeSec} label="Live from Grail and the chain, prices updated" />
+            {updatedAt - flowAt > 60_000 && (
+              <span>
+                7-day trading stats from <TimeAgo iso={new Date(flowAt).toISOString()} serverNow={updatedAt} />
+              </span>
+            )}
+            {unanswered > 0 && (
+              <span className="text-gold-ink">
+                7-day stats are missing part of {unanswered} {unanswered === 1 ? "gToken" : "gTokens"}: Grail&apos;s activity feed
+                didn&apos;t answer
+              </span>
+            )}
+            {truncated > 0 && (
+              <span className="text-gold-ink">
+                7-day stats for {truncated} busy {truncated === 1 ? "gToken cover" : "gTokens cover"} only the newest{" "}
+                {formatNumber(MAX_ACTIVITY_PAGES * ACTIVITY_PAGE_SIZE)} events
+              </span>
+            )}
           </p>
           <h1 className="mt-4 max-w-4xl font-display text-[clamp(2.4rem,6vw,4.6rem)] font-semibold leading-[0.98] tracking-[-0.035em] [font-variation-settings:'wdth'_92]">
             Every gToken, every trade, every card in the vault.

@@ -1,4 +1,4 @@
-import { getHolders, getLeaderboard, getTokenVault, getTokens } from "./grail/api";
+import { getHolders, getLeaderboard, getTokenVault, getTokens, mapLimit } from "./grail/api";
 import { personName, slugOf, ticker } from "./grail/meta";
 import { getMarketSnapshot } from "./market";
 import { certLink, shortAddress } from "./metrics";
@@ -24,8 +24,8 @@ export interface SearchEntry {
 export async function buildSearchIndex(): Promise<SearchEntry[]> {
   const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
   const [vaults, holders, board, snap] = await Promise.all([
-    Promise.all(tokens.map((t) => getTokenVault(t))),
-    Promise.all(tokens.map((t) => getHolders(t.symbol, 50).catch(() => null))),
+    mapLimit(tokens, 6, (t) => getTokenVault(t)),
+    mapLimit(tokens, 6, (t) => getHolders(t.symbol, 50).catch(() => null)),
     getLeaderboard("all_time", "total", 50).catch(() => null),
     getMarketSnapshot().catch(() => null),
   ]);

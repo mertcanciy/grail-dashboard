@@ -17,7 +17,7 @@ export function BackingPanel({ view }: { view: TokenView }) {
       pop: r.psa_pop,
       perItem: r.multiplier,
       count: r.vaulted_cards_count ?? r.backed_supply,
-      slabs: vault.reserves[r.symbol] ?? [],
+      slabs: vault.reserves[r.symbol] ?? null,
       chainId: r.chain_id,
     })),
     ...token.offchain_collectibles.map((c) => ({
@@ -28,11 +28,11 @@ export function BackingPanel({ view }: { view: TokenView }) {
       pop: c.psa_pop,
       perItem: null,
       count: c.available_items_count,
-      slabs: vault.offchain[c.collectible_id] ?? [],
+      slabs: vault.offchain[c.collectible_id] ?? null,
       chainId: token.chain_id,
     })),
   ];
-  const slabCount = items.reduce((s, it) => s + it.slabs.length, 0);
+  const slabCount = items.reduce((s, it) => s + (it.slabs?.length ?? 0), 0);
   const popValue = token.player_fdv;
 
   return (

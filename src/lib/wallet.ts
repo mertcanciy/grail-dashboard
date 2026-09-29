@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { erc20Abi, isAddress, type Address } from "viem";
-import { getProfileActivity, getProfileHoldings, getProfileOverview, getTokens } from "./grail/api";
-import { tokensPerItem } from "./grail/meta";
+import { getPacks, getProfileActivity, getProfileHoldings, getProfileOverview, getTokens } from "./grail/api";
+import { packDisplayNames, tokensPerItem } from "./grail/meta";
 import type { GrailToken } from "./grail/types";
 import { clientFor } from "./onchain";
 
@@ -44,11 +44,12 @@ export const loadWallet = cache(async (raw: string) => {
   const address = raw.toLowerCase();
   if (!isAddress(address)) return null;
 
-  const [{ tokens }, overview, holdings, activity] = await Promise.all([
+  const [{ tokens }, overview, holdings, activity, packs] = await Promise.all([
     getTokens({ timeframe: "1d", windowDays: 1 }),
     getProfileOverview(address).catch(() => null),
     getProfileHoldings(address).catch(() => null),
     getProfileActivity(address, 50).catch(() => null),
+    getPacks().catch(() => []),
   ]);
   const bySymbol = new Map(tokens.map((t) => [t.symbol.toLowerCase(), t]));
 
@@ -91,6 +92,7 @@ export const loadWallet = cache(async (raw: string) => {
       redeemableItems: rows.reduce((s, r) => s + Math.floor(r.itemProgress + 1e-9), 0),
     },
     activity: activity?.items ?? [],
+    packNames: packDisplayNames(packs),
     tokens,
     now: Date.now(),
   };

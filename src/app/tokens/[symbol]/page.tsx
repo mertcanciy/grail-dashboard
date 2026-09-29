@@ -56,7 +56,7 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
 
   return (
     <>
-      <TokenHeader view={view} />
+      <TokenHeader view={view} maxAgeSec={revalidate} />
       <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-6 px-5 sm:px-8">
         <PriceChart symbol={slugOf(token)} initial={view.candles7d} livePrice={token.market_price} renderedAt={view.now} />
 
@@ -85,6 +85,7 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
               market_price: token.market_price,
               peg_ticker: token.peg_ticker,
             }}
+            pegUsd={view.quote?.quoteUsdSource === "robinhood" ? view.quote.quoteUsd : null}
           />
         </div>
 
@@ -93,8 +94,10 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
             Recent activity
           </h2>
           <p className="mt-1 text-sm text-slate">
-            Swaps, liquidity moves and pack claims, newest first. {view.allTimeEvents.toLocaleString("en-US")} events since
-            launch.
+            Swaps, liquidity moves and pack claims, newest first.
+            {view.allTimeEvents != null && ` ${view.allTimeEvents.toLocaleString("en-US")} events since launch.`}
+            {view.activityStatus === "failed" && " Grail's activity feed didn't respond; showing no events rather than guessing."}
+            {view.activityStatus === "interrupted" && " Grail's activity feed stopped answering partway; older events may be missing."}
           </p>
           <div className="mt-4">
             <TradeTape events={view.recent} chainId={token.chain_id} now={view.now} showToken={false} />

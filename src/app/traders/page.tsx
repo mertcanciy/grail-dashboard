@@ -5,6 +5,7 @@ import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/grail/types";
 import { getMarketSnapshot } from "@/lib/market";
 import { formatNumber, formatUsd } from "@/lib/format";
 import { TradersBoard, type Boards } from "@/components/traders-board";
+import { Freshness } from "@/components/freshness";
 
 export const revalidate = 300;
 
@@ -45,15 +46,16 @@ async function loadBoards() {
   );
   const boards = { all_time: {}, "24h": {} } as Boards;
   for (const [p, m, b] of entries) boards[p][m] = b;
-  return { boards, totalEntries };
+  return { boards, totalEntries, renderedAt: Date.now() };
 }
 
 export default async function TradersPage() {
-  const [{ boards, totalEntries }, snap] = await Promise.all([loadBoards(), getMarketSnapshot()]);
+  const [{ boards, totalEntries, renderedAt }, snap] = await Promise.all([loadBoards(), getMarketSnapshot()]);
 
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
       <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">Traders</h1>
+      <Freshness at={renderedAt} maxAgeSec={revalidate} className="mt-3" />
       <p className="mt-3 max-w-2xl text-[17px] leading-relaxed text-slate">
         Grail ranks {totalEntries ? `${formatNumber(totalEntries)} wallets` : "wallets"} by profit and loss in USDC. Realized is locked in by selling; unrealized is what open positions are up or down at
         today&apos;s prices.

@@ -6,6 +6,7 @@ import { loadVault } from "@/lib/vault-view";
 import { FALLBACK_IMAGE, imageOf, personName, slugOf, ticker } from "@/lib/grail/meta";
 import { certLink, shortAddress } from "@/lib/metrics";
 import { formatDate, formatNumber, formatUsd } from "@/lib/format";
+import { Freshness } from "@/components/freshness";
 
 export const revalidate = 900;
 
@@ -20,6 +21,7 @@ export default async function VaultPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
       <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">Proof of vault</h1>
+      <Freshness at={v.now} maxAgeSec={revalidate} className="mt-3" />
       <p className="mt-3 max-w-2xl text-[17px] leading-relaxed text-slate">
         What&apos;s actually sitting in Grail&apos;s vault, item by item. Each piece has a grading certificate you can check
         with the grader and an on-chain registration, and every gToken&apos;s supply should equal exactly what its items mint.
@@ -40,6 +42,12 @@ export default async function VaultPage() {
           </div>
         ))}
       </dl>
+      {v.totals.unavailable > 0 && (
+        <p className="mt-3 text-sm text-gold-ink">
+          Grail&apos;s item lists for {v.totals.unavailable} {v.totals.unavailable === 1 ? "reserve" : "reserves"} didn&apos;t
+          load, so &ldquo;Listed item by item&rdquo; is short by those items.
+        </p>
+      )}
 
       <section className="mt-10" aria-labelledby="recent-title">
         <h2 id="recent-title" className="font-display text-2xl font-semibold tracking-tight">

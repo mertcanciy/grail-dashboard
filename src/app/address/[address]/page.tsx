@@ -3,10 +3,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadWallet } from "@/lib/wallet";
-import { CHAINS, explorerAddress, explorerTx, imageOf, personName, slugOf, ticker } from "@/lib/grail/meta";
+import {
+  CHAINS,
+  explorerAddress,
+  explorerTx,
+  imageOf,
+  personName,
+  profileActivityLabel,
+  profileActivitySubject,
+  slugOf,
+  ticker,
+} from "@/lib/grail/meta";
 import { shortAddress } from "@/lib/metrics";
-import { formatDate, formatNumber, formatShare, formatTokenAmount, formatUsd, timeAgo } from "@/lib/format";
+import { formatDate, formatNumber, formatShare, formatTokenAmount, formatUsd } from "@/lib/format";
 import { AddressRow } from "@/components/address-row";
+import { Freshness } from "@/components/freshness";
+import { TimeAgo } from "@/components/time-ago";
 import { Change } from "@/components/change";
 import { cn } from "@/lib/utils";
 
@@ -27,16 +39,6 @@ export async function generateMetadata(props: PageProps<"/address/[address]">): 
     description: `${name} holds ${formatUsd(w.totals.tokensUsd, { compact: true })} across ${w.rows.length} gTokens.`,
   };
 }
-
-const KIND_LABEL: Record<string, string> = {
-  buy: "Buy",
-  sell: "Sell",
-  pack_claim: "Pack claim",
-  pack_purchase: "Pack purchase",
-  lp_add: "Add liquidity",
-  lp_remove: "Remove liquidity",
-  redeem: "Redeem",
-};
 
 export default async function WalletPage(props: PageProps<"/address/[address]">) {
   const { address } = await props.params;
@@ -73,6 +75,7 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
                 </>
               )}
             </p>
+            <Freshness at={w.now} maxAgeSec={revalidate} className="mt-1.5" />
           </div>
         </div>
         <div className="w-full max-w-sm divide-y divide-hairline rounded-2xl border border-hairline bg-paper px-4">
@@ -225,24 +228,24 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
                           kind === "buy" ? "bg-up/10 text-up" : kind === "sell" ? "bg-down/10 text-down" : "bg-muted text-slate",
                         )}
                       >
-                        {KIND_LABEL[kind] ?? kind.replace(/_/g, " ")}
+                        {profileActivityLabel(kind)}
                       </span>
                       {t ? (
                         <Link href={`/tokens/${slugOf(t)}`} className="truncate font-medium hover:text-gold-ink">
                           {ticker(t)}
                         </Link>
                       ) : (
-                        <span className="truncate">{a.token_name ?? a.token_symbol ?? ""}</span>
+                        <span className="truncate">{profileActivitySubject(a, w.packNames)}</span>
                       )}
                     </span>
                     <span className="flex shrink-0 items-center gap-3">
                       <span className="tabular font-medium">{a.amount_usdc ? formatUsd(Number(a.amount_usdc)) : ""}</span>
                       {tx ? (
                         <a href={tx} target="_blank" rel="noreferrer" className="w-20 text-right text-xs text-slate hover:text-graphite">
-                          {timeAgo(a.timestamp, w.now)}
+                          <TimeAgo iso={a.timestamp} serverNow={w.now} />
                         </a>
                       ) : (
-                        <span className="w-20 text-right text-xs text-slate">{timeAgo(a.timestamp, w.now)}</span>
+                        <TimeAgo iso={a.timestamp} serverNow={w.now} className="w-20 text-right text-xs text-slate" />
                       )}
                     </span>
                   </li>

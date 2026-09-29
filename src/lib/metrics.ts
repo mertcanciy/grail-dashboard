@@ -248,8 +248,12 @@ export function dailyFlow(events: Activity[], days: number, now = Date.now()) {
   return rows;
 }
 
-export function holderConcentration(holders: Pick<Holder, "percentage">[]) {
-  const pct = holders.map((h) => Number(h.percentage) / 100).filter(Number.isFinite).sort((a, b) => b - a);
+/** Top-N shares of `base` (a fraction of total supply; 1 = whole supply). */
+export function holderConcentration(holders: Pick<Holder, "percentage">[], base = 1) {
+  const pct = holders
+    .map((h) => Number(h.percentage) / 100 / (base > 0 ? base : 1))
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a);
   const sum = (n: number) => pct.slice(0, n).reduce((s, v) => s + v, 0);
   return { top1: sum(1), top10: sum(10), top50: sum(50) };
 }
