@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { walkActivity } from "./grail/api";
-import { packDisplayNames, primaryReserve, profileActivityLabel, profileActivitySubject, tokensPerItem } from "./grail/meta";
+import {
+  packDisplayNames,
+  primaryReserve,
+  profileActivityLabel,
+  profileActivitySubject,
+  tokensPerItem,
+  walletActivityFromFeed,
+} from "./grail/meta";
 import { holderConcentration } from "./metrics";
-import type { Activity, Paginated } from "./grail/types";
+import type { Activity, GrailToken, Paginated, TokenActivity } from "./grail/types";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -158,5 +165,37 @@ describe("holderConcentration", () => {
     expect(c.top1).toBeCloseTo(0.05);
     expect(c.top10).toBeCloseTo(0.1);
     expect(holderConcentration(collectors).top10).toBeCloseTo(0.01);
+  });
+});
+
+describe("walletActivityFromFeed", () => {
+  const tokens = [
+    { symbol: "gCOOP", chain_id: 8453 },
+    { symbol: "gKAI", chain_id: 4663 },
+  ] as Pick<GrailToken, "symbol" | "chain_id">[];
+  const ev = (symbol: string, address: string, type: TokenActivity["type"], at: string) =>
+    ({ symbol, address, type, block_timestamp: at, tx_hash: `0x${at}`, log_index: 0, token_amount: "10", usd_value: "5.00", price: "0.5", display_name: "" }) as TokenActivity;
+
+  it("keeps only the wallet's rows, newest first, in profile-activity shape", () => {
+    const rows = walletActivityFromFeed(
+      [
+        ev("gCOOP", "0xAbC", "LP_ADD", "2026-09-20T00:00:00Z"),
+        ev("gKAI", "0xabc", "BUY", "2026-09-25T00:00:00Z"),
+        ev("gKAI", "0xdef", "SELL", "2026-09-26T00:00:00Z"),
+        ev("gGONE", "0xabc", "BUY", "2026-09-27T00:00:00Z"),
+      ],
+      "0xABC",
+      tokens,
+    );
+    expect(rows.map((r) => [r.token_symbol, r.kind, r.chain_id])).toEqual([
+      ["gKAI", "buy", 4663],
+      ["gCOOP", "lp_add", 8453],
+    ]);
+    expect(rows[0]).toMatchObject({ amount_usdc: "5.00", side: "buy", token_amount: 10, price: 0.5 });
+  });
+
+  it("labels token-feed kinds that profile activity doesn't use", () => {
+    expect(profileActivityLabel("pack_nft_buy")).toBe("Pack NFT buy");
+    expect(profileActivityLabel("lp_fee_collect")).toBe("Collect fees");
   });
 });

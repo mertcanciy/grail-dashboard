@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadWallet } from "@/lib/wallet";
+import { WALLET_FEED_DAYS, loadWallet } from "@/lib/wallet";
 import {
   CHAINS,
   explorerAddress,
@@ -75,6 +75,9 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
                 </>
               )}
             </p>
+            {w.holdingsPrivate && (
+              <p className="mt-0.5 text-sm text-slate">Portfolio is private on Grail, so balances are read from the chain.</p>
+            )}
             <Freshness at={w.now} maxAgeSec={revalidate} className="mt-1.5" />
           </div>
         </div>
@@ -209,9 +212,20 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
           <h2 id="activity-title" className="font-display text-xl font-semibold tracking-tight">
             Recent activity
           </h2>
+          {w.activitySource === "chain" && (
+            <p className="mt-1 text-xs text-slate">
+              {w.activityPrivate ? `${name} keeps their Grail activity private, so this` : "This"} is the wallet&apos;s
+              on-chain gToken activity from the last {WALLET_FEED_DAYS} days, read from Grail&apos;s public token feeds.
+              {w.activityIncomplete && " Some token feeds didn't load fully, so older trades may be missing."}
+            </p>
+          )}
           {w.activity.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate">
-              {w.source === "grail" ? "No recent activity." : "Activity history is only available for Grail accounts."}
+              {w.activitySource === "grail"
+                ? "No recent activity."
+                : w.activitySource === "chain"
+                  ? `No on-chain gToken activity in the last ${WALLET_FEED_DAYS} days.`
+                  : "Grail's activity feeds didn't respond; try again in a moment."}
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-hairline">

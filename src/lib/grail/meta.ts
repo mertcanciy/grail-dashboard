@@ -1,4 +1,4 @@
-import type { ChainId, GrailToken, Pack, ProfileActivity, Reserve } from "./types";
+import type { ChainId, GrailToken, Pack, ProfileActivity, Reserve, TokenActivity } from "./types";
 
 export const CHAINS: Record<ChainId, { name: string; short: string; explorer: string; rpc: string }> = {
   8453: {
@@ -188,7 +188,33 @@ export function activityLabel(type: string) {
 
 export function profileActivityLabel(kind: string) {
   const k = kind.toLowerCase();
-  return PROFILE_ACTIVITY_LABELS[k] ?? humanize(k);
+  return PROFILE_ACTIVITY_LABELS[k] ?? ACTIVITY_LABELS[k.toUpperCase()] ?? humanize(k);
+}
+
+/** A wallet's rows from the public per-token activity feeds, shaped like `profile/{id}/activity` rows, newest first. */
+export function walletActivityFromFeed(
+  events: TokenActivity[],
+  address: string,
+  tokens: Pick<GrailToken, "symbol" | "chain_id">[],
+): ProfileActivity[] {
+  const chainOf = new Map(tokens.map((t) => [t.symbol, t.chain_id]));
+  const wallet = address.toLowerCase();
+  return events
+    .filter((e) => e.address.toLowerCase() === wallet && chainOf.has(e.symbol))
+    .sort((a, b) => Date.parse(b.block_timestamp) - Date.parse(a.block_timestamp))
+    .map((e) => ({
+      chain_id: chainOf.get(e.symbol)!,
+      kind: e.type.toLowerCase(),
+      timestamp: e.block_timestamp,
+      token_symbol: e.symbol,
+      token_name: null,
+      amount_usdc: e.usd_value ?? null,
+      side: e.type === "BUY" || e.type === "SELL" ? e.type.toLowerCase() : null,
+      price: e.price != null ? Number(e.price) : null,
+      token_amount: Number(e.token_amount),
+      tx_hash: e.tx_hash,
+      image_url: null,
+    }));
 }
 
 /** What a wallet activity row is about when it has no token: the achievement or pack name. */
