@@ -1,7 +1,15 @@
 import { cache } from "react";
 import { erc20Abi, isAddress, type Address } from "viem";
-import { getPacks, getProfileActivity, getProfileHoldings, getProfileOverview, getTokens } from "./grail/api";
-import { packDisplayNames, tokensPerItem } from "./grail/meta";
+import {
+  GrailApiError,
+  getMarketActivity,
+  getPacks,
+  getProfileActivity,
+  getProfileHoldings,
+  getProfileOverview,
+  getTokens,
+} from "./grail/api";
+import { packDisplayNames, tokensPerItem, walletActivityFromFeed } from "./grail/meta";
 import type { GrailToken } from "./grail/types";
 import { clientFor } from "./onchain";
 
@@ -40,17 +48,29 @@ async function onchainBalances(address: Address, tokens: GrailToken[]) {
   return out;
 }
 
+/** How far back wallets without readable Grail activity are searched in the public token feeds. */
+export const WALLET_FEED_DAYS = 7;
+
+/** Grail answers 403 for profiles whose owner made their portfolio or activity private. */
+const privateOrNull = (e: unknown) => (e instanceof GrailApiError && e.status === 403 ? ("private" as const) : null);
+
 export const loadWallet = cache(async (raw: string) => {
   const address = raw.toLowerCase();
   if (!isAddress(address)) return null;
 
-  const [{ tokens }, overview, holdings, activity, packs] = await Promise.all([
+  const [{ tokens }, overview, holdingsRes, activityRes, packs] = await Promise.all([
     getTokens({ timeframe: "1d", windowDays: 1 }),
     getProfileOverview(address).catch(() => null),
-    getProfileHoldings(address).catch(() => null),
-    getProfileActivity(address, 50).catch(() => null),
+    getProfileHoldings(address).catch(privateOrNull),
+    getProfileActivity(address, 50).catch(privateOrNull),
     getPacks().catch(() => []),
   ]);
+  const holdings = holdingsRes === "private" ? null : holdingsRes;
+  const grailActivity = activityRes === "private" ? null : activityRes;
+
+  // Private profiles and wallets without a Grail account still trade on-chain, and those trades are public.
+  const feed = grailActivity ? null : await getMarketActivity(tokens, WALLET_FEED_DAYS).catch(() => null);
+  const feedCoverage = feed?.coverage;
   const bySymbol = new Map(tokens.map((t) => [t.symbol.toLowerCase(), t]));
 
   let rows: WalletHolding[];
@@ -91,7 +111,18 @@ export const loadWallet = cache(async (raw: string) => {
       lpUsd: holdings ? Number(holdings.totals.lp_usd) : null,
       redeemableItems: rows.reduce((s, r) => s + Math.floor(r.itemProgress + 1e-9), 0),
     },
-    activity: activity?.items ?? [],
+    activity: grailActivity
+      ? grailActivity.items
+      : feed
+        ? walletActivityFromFeed(feed.events, address, tokens)
+        : [],
+    activitySource: grailActivity ? ("grail" as const) : feed ? ("chain" as const) : null,
+    /** Some token feeds failed or were cut short, so older on-chain trades may be missing. */
+    activityIncomplete: feedCoverage
+      ? feedCoverage.failed.length + feedCoverage.interrupted.length + feedCoverage.truncated.length > 0
+      : false,
+    holdingsPrivate: holdingsRes === "private",
+    activityPrivate: activityRes === "private",
     packNames: packDisplayNames(packs),
     tokens,
     now: Date.now(),
