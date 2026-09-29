@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { erc20Abi, parseAbi, parseUnits, type Abi, type Address } from "viem";
 import { base, robinhood } from "viem/chains";
-import { getToken } from "./grail/api";
+import { getEquityQuote, getToken } from "./grail/api";
 import { quoteAssetOf, tokensPerItem } from "./grail/meta";
 import type { GrailToken } from "./grail/types";
 import { clientFor } from "./onchain";
@@ -51,6 +51,9 @@ export interface ItemQuote {
   sellCapUsd: number | null;
   /** Largest quoted fraction of an item the pool can deliver on a buy (0 if none). */
   maxBuyFraction: number;
+  /** USD value of one unit of the pool's quote asset, and where it came from. */
+  quoteUsd: number;
+  quoteUsdSource: "stablecoin" | "robinhood" | "implied";
   quotedAt: number;
 }
 
@@ -145,14 +148,23 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
   const amounts = results.map((r) => (r.status === "success" ? Number((r.result as readonly bigint[])[0]) / 10 ** decimals : null));
   const isUsd = /USD/i.test(symbol);
 
-  // Stock-paired pools quote in an equity token; convert with the rate implied by Grail's USD price and the
-  // smallest sell quote (which carries almost no price impact).
+  // Stock-paired pools quote in an equity token; convert with Robinhood's live quote for that equity. Without
+  // one, fall back to the rate implied by Grail's USD price and the smallest sell quote, which hides any gap
+  // between the pool and Grail's price.
   let usdPerQuote = 1;
+  let quoteUsdSource: ItemQuote["quoteUsdSource"] = "stablecoin";
   if (!isUsd) {
-    const smallest = calls.findIndex((c) => c.leg.kind === "sell" && c.leg.fraction === DEPTH_FRACTIONS[0]);
-    const out = amounts[smallest];
-    if (!out) return null;
-    usdPerQuote = (price * perItem * DEPTH_FRACTIONS[0]) / out;
+    const live = await getEquityQuote(token.peg_ticker?.trim() || String(symbol));
+    if (live) {
+      usdPerQuote = live.mid;
+      quoteUsdSource = "robinhood";
+    } else {
+      const smallest = calls.findIndex((c) => c.leg.kind === "sell" && c.leg.fraction === DEPTH_FRACTIONS[0]);
+      const out = amounts[smallest];
+      if (!out) return null;
+      usdPerQuote = (price * perItem * DEPTH_FRACTIONS[0]) / out;
+      quoteUsdSource = "implied";
+    }
   }
 
   const depth: DepthPoint[] = DEPTH_FRACTIONS.map((fraction) => {
@@ -170,6 +182,8 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
     quoteSymbol: symbol,
     spotUsd: price * perItem,
     ...capDepth(depth),
+    quoteUsd: usdPerQuote,
+    quoteUsdSource,
     quotedAt: Date.now(),
   };
 }
@@ -210,7 +224,7 @@ export const getItemQuote = unstable_cache(
       return null;
     }
   },
-  ["item-quote-v1"],
+  ["item-quote-v2"],
   { revalidate: 300, tags: ["grail", "quotes"] },
 );
 

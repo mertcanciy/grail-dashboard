@@ -29,6 +29,7 @@ export function Hero({
   tokens,
   updatedAt,
   flowAt,
+  coverage,
   maxAgeSec,
 }: {
   kpis: HeroKpis;
@@ -36,8 +37,11 @@ export function Hero({
   updatedAt: number;
   /** When the 7-day trading snapshot was computed; it is cached separately from prices. */
   flowAt: number;
+  /** Tokens missing from, or only partly counted in, the 7-day stats. */
+  coverage?: { failed: string[]; truncated: string[] };
   maxAgeSec: number;
 }) {
+  const undercounted = coverage ? coverage.failed.length + coverage.truncated.length : 0;
   const featured = [...tokens].sort((a, b) => Number(b.market_cap) - Number(a.market_cap));
 
   return (
@@ -49,6 +53,11 @@ export function Hero({
             {updatedAt - flowAt > 60_000 && (
               <span>
                 7-day trading stats from <TimeAgo iso={new Date(flowAt).toISOString()} serverNow={updatedAt} />
+              </span>
+            )}
+            {undercounted > 0 && (
+              <span className="text-gold-ink">
+                7-day stats leave out part of {undercounted} {undercounted === 1 ? "gToken" : "gTokens"} Grail didn&apos;t fully return
               </span>
             )}
           </p>

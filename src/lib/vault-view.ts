@@ -1,4 +1,4 @@
-import { getHolders, getTokenVault, getTokens } from "./grail/api";
+import { getHolders, getTokenVault, getTokens, mapLimit } from "./grail/api";
 import { isGrailWallet, tokensPerItem, vaultedItems } from "./grail/meta";
 import type { GrailToken, VaultItem } from "./grail/types";
 import { redeemCandidates, supplyBacking, type RedeemCandidate } from "./metrics";
@@ -19,12 +19,10 @@ export interface RecentItem extends VaultItem {
 export async function loadVault() {
   const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
 
-  const perToken = await Promise.all(
-    tokens.map(async (token) => {
-      const [vault, holders] = await Promise.all([getTokenVault(token), getHolders(token.symbol, 50).catch(() => null)]);
-      return { token, vault, holders: holders?.results ?? [] };
-    }),
-  );
+  const perToken = await mapLimit(tokens, 6, async (token) => {
+    const [vault, holders] = await Promise.all([getTokenVault(token), getHolders(token.symbol, 50).catch(() => null)]);
+    return { token, vault, holders: holders?.results ?? [] };
+  });
 
   const registry: RegistryRow[] = [];
   const redeemers: (RedeemCandidate & { token: GrailToken })[] = [];

@@ -85,6 +85,7 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
               market_price: token.market_price,
               peg_ticker: token.peg_ticker,
             }}
+            pegUsd={view.quote?.quoteUsdSource === "robinhood" ? view.quote.quoteUsd : null}
           />
         </div>
 
@@ -93,8 +94,9 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
             Recent activity
           </h2>
           <p className="mt-1 text-sm text-slate">
-            Swaps, liquidity moves and pack claims, newest first. {view.allTimeEvents.toLocaleString("en-US")} events since
-            launch.
+            Swaps, liquidity moves and pack claims, newest first.
+            {view.allTimeEvents != null && ` ${view.allTimeEvents.toLocaleString("en-US")} events since launch.`}
+            {view.activityStatus === "failed" && " Grail's activity feed didn't respond; showing no events rather than guessing."}
           </p>
           <div className="mt-4">
             <TradeTape events={view.recent} chainId={token.chain_id} now={view.now} showToken={false} />

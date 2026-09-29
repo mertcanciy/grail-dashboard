@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GrailToken } from "@/lib/grail/types";
 import { readOnchain, type OnchainSnapshot, type OnchainTarget } from "@/lib/onchain";
 import { chainOf, quoteAssetOf, ticker } from "@/lib/grail/meta";
@@ -11,15 +11,28 @@ const POLL_MS = 20_000;
 
 export type OnchainPanelToken = OnchainTarget & Pick<GrailToken, "symbol" | "name" | "market_price" | "peg_ticker">;
 
-export function OnchainPanel({ token }: { token: OnchainPanelToken }) {
+export function OnchainPanel({
+  token,
+  pegUsd,
+}: {
+  token: OnchainPanelToken;
+  /** Live USD price of the equity an equity-paired pool trades against, when known. */
+  pegUsd?: number | null;
+}) {
   const [snap, setSnap] = useState<OnchainSnapshot | null>(null);
+  // router.refresh() hands us a new token object every couple of minutes; keep polling unless the pool changes.
+  const target = useRef<OnchainTarget>(token);
+  const poolKey = `${token.chain_id}:${token.token_address}:${token.pool_address}:${token.v4_pool?.pool_id ?? ""}`;
+  useEffect(() => {
+    target.current = token;
+  });
   const [error, setError] = useState(false);
   const [pulse, setPulse] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     const load = () =>
-      readOnchain(token)
+      readOnchain(target.current)
         .then((s) => {
           if (cancelled) return;
           setSnap(s);
@@ -33,15 +46,16 @@ export function OnchainPanel({ token }: { token: OnchainPanelToken }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [token]);
+  }, [poolKey]);
 
   const chain = chainOf(token.chain_id);
   const quote = quoteAssetOf(token);
   const apiPrice = token.market_price ?? 0;
   const pool = snap?.pool;
   const isUsd = pool?.quoteSymbol.toUpperCase().includes("USD");
-  const drift = pool && isUsd && apiPrice ? ((pool.priceInQuote - apiPrice) / apiPrice) * 100 : null;
-  const impliedQuoteUsd = pool && !isUsd && pool.priceInQuote > 0 ? apiPrice / pool.priceInQuote : null;
+  const poolUsd = pool ? (isUsd ? pool.priceInQuote : pegUsd ? pool.priceInQuote * pegUsd : null) : null;
+  const drift = poolUsd != null && apiPrice ? ((poolUsd - apiPrice) / apiPrice) * 100 : null;
+  const impliedQuoteUsd = pool && !isUsd && !pegUsd && pool.priceInQuote > 0 ? apiPrice / pool.priceInQuote : null;
 
   return (
     <section className="panel p-5 sm:p-7" aria-labelledby="onchain-title">
@@ -84,9 +98,11 @@ export function OnchainPanel({ token }: { token: OnchainPanelToken }) {
       {(drift != null || impliedQuoteUsd != null) && (
         <p className="mt-5 rounded-xl bg-gold-wash px-3.5 py-2.5 text-sm text-gold-ink">
           {drift != null
-            ? Math.abs(drift) < 1
-              ? `The pool price matches Grail's quoted ${formatPrice(apiPrice)} to within 1%.`
-              : `The pool price is ${Math.abs(drift).toFixed(1)}% ${drift > 0 ? "above" : "below"} Grail's quoted ${formatPrice(apiPrice)}.`
+            ? `${!isUsd ? `At ${pool!.quoteSymbol} ${formatUsd(pegUsd!)} (Robinhood), the pool price is ${formatPrice(poolUsd)}. ` : ""}${
+                Math.abs(drift) < 1
+                  ? `The pool price matches Grail's quoted ${formatPrice(apiPrice)} to within 1%.`
+                  : `The pool price is ${Math.abs(drift).toFixed(1)}% ${drift > 0 ? "above" : "below"} Grail's quoted ${formatPrice(apiPrice)}.`
+              }`
             : `This pool is paired with ${pool!.quoteSymbol}, so Grail's ${formatPrice(apiPrice)} price implies 1 ${pool!.quoteSymbol} ≈ ${formatUsd(impliedQuoteUsd!)}.`}
         </p>
       )}

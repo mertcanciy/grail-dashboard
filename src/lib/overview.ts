@@ -16,6 +16,7 @@ export async function loadOverview() {
   return {
     now,
     flowAt: snap.computedAt,
+    coverage: snap.coverage,
     tokens,
     kpis: {
       marketCap: totalMarketCap,

@@ -1,10 +1,10 @@
 import type { TokenView } from "@/lib/token-view";
 import Link from "next/link";
-import { ticker } from "@/lib/grail/meta";
+import { isGrailWallet, ticker } from "@/lib/grail/meta";
 import { formatNumber, formatShare, formatUsd } from "@/lib/format";
 
 export function HoldersPanel({ view }: { view: TokenView }) {
-  const { holders, holderCount, concentration, token } = view;
+  const { holders, holderCount, concentration, grailShare, token } = view;
   const top = holders.slice(0, 8);
   const max = Math.max(...top.map((h) => Number(h.percentage)), 0.01);
 
@@ -15,13 +15,14 @@ export function HoldersPanel({ view }: { view: TokenView }) {
       </h2>
       <p className="mt-1 text-sm text-slate">
         {holderCount != null ? `${formatNumber(holderCount)} wallets hold ${ticker(token)}. ` : ""}
-        The ten largest control {formatShare(concentration.top10)} of the supply.
+        The ten largest collectors control {formatShare(concentration.top10)} of the supply
+        {grailShare > 0 ? `; Grail's own inventory holds another ${formatShare(grailShare)}, not counted below.` : "."}
       </p>
 
       <div className="mt-5 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline text-sm">
         {(
           [
-            ["Largest wallet", concentration.top1],
+            ["Largest collector", concentration.top1],
             ["Top 10", concentration.top10],
             ["Top 50", concentration.top50],
           ] as const
@@ -43,6 +44,11 @@ export function HoldersPanel({ view }: { view: TokenView }) {
                   <Link href={`/address/${h.address.toLowerCase()}`} className="truncate font-medium hover:text-gold-ink">
                     {h.username ?? h.display_name}
                   </Link>
+                  {isGrailWallet(h.username ?? h.display_name) && (
+                    <span className="shrink-0 rounded-full bg-gold-wash px-2 py-0.5 text-[11px] font-medium text-gold-ink">
+                      Grail inventory
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-muted">
                   <div className="h-full rounded-full bg-graphite/75" style={{ width: `${(Number(h.percentage) / max) * 100}%` }} />

@@ -26,7 +26,7 @@ export const SNAPSHOT_REVALIDATE = 300;
 export const getMarketSnapshot = unstable_cache(
   async () => {
     const { tokens } = await getTokens({ timeframe: "1h", windowDays: 7 });
-    const { events } = await getMarketActivity(tokens, 7);
+    const { events, coverage } = await getMarketActivity(tokens, 7);
     const now = Date.now();
 
     const trades = events.filter(isTrade);
@@ -56,6 +56,7 @@ export const getMarketSnapshot = unstable_cache(
 
     return {
       computedAt: now,
+      coverage,
       summary,
       lenses: {
         "24h": trimLenses(marketLenses(since(events, DAY_MS, now), tokens)),
@@ -71,7 +72,7 @@ export const getMarketSnapshot = unstable_cache(
       latest: trades.slice(0, 14),
     };
   },
-  ["market-snapshot-v3"],
+  ["market-snapshot-v4"],
   { revalidate: SNAPSHOT_REVALIDATE, tags: ["grail", "market"] },
 );
 

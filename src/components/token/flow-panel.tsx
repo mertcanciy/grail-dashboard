@@ -13,8 +13,16 @@ export function FlowPanel({ view }: { view: TokenView }) {
       <p className="mt-1 text-sm text-slate">
         {s.trades
           ? `${formatNumber(s.trades)} swaps from ${formatNumber(s.uniqueTraders)} wallets. Buyers made up ${formatShare(s.buyShare)} of the volume.`
-          : "Nobody has swapped this gToken in the last seven days."}
+          : view.activityStatus === "failed"
+            ? "Grail's activity feed didn't respond, so this week's trading can't be shown right now."
+            : "Nobody has swapped this gToken in the last seven days."}
       </p>
+      {view.activityStatus === "partial" && (
+        <p className="mt-2 rounded-xl bg-gold-wash px-3 py-2 text-xs text-gold-ink">
+          Trading was so heavy that only the most recent {formatNumber(view.recentWindowEvents)} events of the week were
+          read; totals below undercount the full seven days.
+        </p>
+      )}
 
       {s.volume > 0 && (
         <div className="mt-5">
