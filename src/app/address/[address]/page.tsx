@@ -235,7 +235,7 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
                           {ticker(t)}
                         </Link>
                       ) : (
-                        <span className="truncate">{profileActivitySubject(a)}</span>
+                        <span className="truncate">{profileActivitySubject(a, w.packNames)}</span>
                       )}
                     </span>
                     <span className="flex shrink-0 items-center gap-3">

@@ -28,17 +28,20 @@ export async function loadVault() {
   const redeemers: (RedeemCandidate & { token: GrailToken })[] = [];
   const recent: RecentItem[] = [];
 
+  let unavailable = 0;
   for (const { token, vault, holders } of perToken) {
     const cands = redeemCandidates(holders, tokensPerItem(token), 1);
     redeemers.push(...cands.map((c) => ({ ...c, token })));
     let listed = 0;
     for (const r of token.reserves) {
       const items = vault.reserves[r.symbol] ?? [];
+      if (!vault.reserves[r.symbol]) unavailable++;
       listed += items.length;
       recent.push(...items.map((it) => ({ ...it, token, itemName: r.name.trim() })));
     }
     for (const c of token.offchain_collectibles) {
       const items = vault.offchain[c.collectible_id] ?? [];
+      if (!vault.offchain[c.collectible_id]) unavailable++;
       listed += items.length;
       recent.push(...items.map((it) => ({ ...it, chain_id: token.chain_id, token, itemName: c.name.trim() })));
     }
@@ -63,6 +66,8 @@ export async function loadVault() {
       tokens: registry.length,
       vaultValue: tokens.reduce((s, t) => s + Number(t.market_cap || 0), 0),
       redeemableItems: collectors.reduce((s, r) => s + r.items, 0),
+      /** Reserves and collectibles whose item list Grail didn't return; their items are missing from "listed". */
+      unavailable,
     },
     now: Date.now(),
   };

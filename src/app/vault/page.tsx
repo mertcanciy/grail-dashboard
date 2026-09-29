@@ -42,6 +42,12 @@ export default async function VaultPage() {
           </div>
         ))}
       </dl>
+      {v.totals.unavailable > 0 && (
+        <p className="mt-3 text-sm text-gold-ink">
+          Grail&apos;s item lists for {v.totals.unavailable} {v.totals.unavailable === 1 ? "reserve" : "reserves"} didn&apos;t
+          load, so &ldquo;Listed item by item&rdquo; is short by those items.
+        </p>
+      )}
 
       <section className="mt-10" aria-labelledby="recent-title">
         <h2 id="recent-title" className="font-display text-2xl font-semibold tracking-tight">

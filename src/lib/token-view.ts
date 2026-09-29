@@ -17,9 +17,15 @@ function alternateSymbol(symbol: string) {
   return /^g[a-z0-9]/i.test(symbol) ? symbol.slice(1) : `g${symbol}`;
 }
 
+const TOKEN_OPTS = { timeframe: "1h", windowDays: 7 } as const;
+
+/** One cached token request; the layout uses it to 404 before streaming and the page reuses the same fetch. */
+export const findToken = cache(
+  async (symbol: string) => (await getToken(symbol, TOKEN_OPTS)) ?? (await getToken(alternateSymbol(symbol), TOKEN_OPTS)),
+);
+
 export const loadToken = cache(async (symbol: string) => {
-  const opts = { timeframe: "1h", windowDays: 7 } as const;
-  const token = (await getToken(symbol, opts)) ?? (await getToken(alternateSymbol(symbol), opts));
+  const token = await findToken(symbol);
   if (!token) return null;
   const [activity, holders, vault, quote] = await Promise.all([
     getActivityWindow(token.symbol, 7, MAX_ACTIVITY_PAGES, token).catch(() => null),
@@ -47,12 +53,17 @@ export const loadToken = cache(async (symbol: string) => {
     recent: events.slice(0, 25),
     recentWindowEvents: events.length,
     allTimeEvents: activity?.allTimeCount ?? null,
-    /** "partial": the 7-day walk hit the page limit; "failed": Grail's activity endpoint didn't answer. */
-    activityStatus: !activity ? "failed" : activity.complete ? "ok" : "partial",
+    /**
+     * "failed": Grail's activity endpoint didn't answer at all; "interrupted": a later page failed, so only the
+     * newest events were read; "partial": the 7-day walk hit the page limit.
+     */
+    activityStatus: !activity ? "failed" : activity.error ? "interrupted" : activity.complete ? "ok" : "partial",
     holders: holderRows,
     holderCount: holders?.count ?? null,
     /** Concentration among collectors; Grail's own inventory wallet is reported separately as `grailShare`. */
-    concentration: holderConcentration(collectorRows),
+    collectors: collectorRows,
+    /** Shares of the collector float (supply outside Grail's inventory), not of total supply. */
+    concentration: holderConcentration(collectorRows, 1 - grailShare),
     grailShare,
     perItem,
     itemValue: itemValue(token.market_price, perItem),

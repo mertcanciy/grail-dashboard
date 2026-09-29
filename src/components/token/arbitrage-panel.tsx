@@ -139,8 +139,8 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
               <p className="mt-2 text-xs text-slate">
                 This pool trades against {quote.quoteSymbol};{" "}
                 {quote.quoteUsdSource === "robinhood"
-                  ? `dollar figures use Robinhood's live ${quote.quoteSymbol} quote of ${formatUsd(quote.quoteUsd)}.`
-                  : `Robinhood's ${quote.quoteSymbol} quote was unavailable, so dollar figures use the rate implied by Grail's price.`}
+                  ? `dollar figures use Robinhood's live ${quote.quoteTicker} quote of ${formatUsd(quote.quoteUsd)}.`
+                  : `Robinhood's ${quote.quoteTicker} quote was unavailable, so dollar figures use the rate implied by Grail's price.`}
               </p>
             )}
           </div>

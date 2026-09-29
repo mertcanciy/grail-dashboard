@@ -1,4 +1,4 @@
-import type { ChainId, GrailToken, ProfileActivity, Reserve } from "./types";
+import type { ChainId, GrailToken, Pack, ProfileActivity, Reserve } from "./types";
 
 export const CHAINS: Record<ChainId, { name: string; short: string; explorer: string; rpc: string }> = {
   8453: {
@@ -192,26 +192,54 @@ export function profileActivityLabel(kind: string) {
 }
 
 /** What a wallet activity row is about when it has no token: the achievement or pack name. */
-export function profileActivitySubject(a: Pick<ProfileActivity, "kind" | "detail" | "token_name" | "token_symbol">) {
+/** `packNames` maps pack ids to catalog names (see `packDisplayNames`); unknown ids fall back to `humanizePack`. */
+export function profileActivitySubject(
+  a: Pick<ProfileActivity, "kind" | "detail" | "token_name" | "token_symbol">,
+  packNames?: ReadonlyMap<string, string>,
+) {
   const detail = a.detail?.trim();
-  if (detail) return a.kind.toLowerCase() === "pack_open" ? humanizePack(detail) : detail;
+  if (detail) return a.kind.toLowerCase() === "pack_open" ? (packNames?.get(detail) ?? humanizePack(detail)) : detail;
   return a.token_name ?? a.token_symbol ?? "";
 }
 
-/** Grail pack ids are run together in capitals ("FOUNDERPACKSVERIFIEDLEGEND"); split the common words out. */
-function humanizePack(id: string) {
-  if (/[a-z\s]/.test(id)) return id;
-  const words = ["FOUNDER", "PACKS", "PACK", "VERIFIED", "LEGEND", "GENESIS", "LAUNCH", "EXPANSION", "SERIES"];
+const PACK_WORDS = ["FOUNDERS", "FOUNDER", "PACKS", "PACK", "VERIFIED", "LEGEND", "GENESIS", "LAUNCH", "EXPANSION", "SERIES", "GOAT", "OG"];
+const PACK_ACRONYMS = new Set(["GOAT", "OG"]);
+
+/** Splits a run-together pack id into known words; `rest` is whatever didn't match. */
+function packWords(id: string) {
   let rest = id;
-  const out: string[] = [];
-  while (rest) {
-    const w = words.find((x) => rest.startsWith(x));
-    if (!w) {
-      out.push(rest);
-      break;
-    }
-    out.push(w);
+  const words: string[] = [];
+  for (let w = PACK_WORDS.find((x) => rest.startsWith(x)); w; w = PACK_WORDS.find((x) => rest.startsWith(x))) {
+    words.push(w);
     rest = rest.slice(w.length);
   }
-  return out.map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(" ");
+  return { words, rest };
+}
+
+const titleWord = (w: string) => (PACK_ACRONYMS.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase());
+
+/** Grail pack ids are run together in capitals ("FOUNDERPACKSVERIFIEDLEGEND"); split the common words out. */
+export function humanizePack(id: string) {
+  if (/[a-z\s]/.test(id)) return id;
+  const { words, rest } = packWords(id);
+  return [...words, ...(rest ? [rest] : [])].map(titleWord).join(" ");
+}
+
+/**
+ * Pack id → name from Grail's pack catalog. Several ids can share one catalog name (the four Founder tiers are all
+ * "Founder Series #1"); those get the tier from the id when it splits cleanly.
+ */
+export function packDisplayNames(packs: Pick<Pack, "pack_id" | "display_name">[]) {
+  const uses = new Map<string, number>();
+  for (const p of packs) uses.set(p.display_name, (uses.get(p.display_name) ?? 0) + 1);
+  return new Map(
+    packs.map((p) => {
+      const name = p.display_name.trim();
+      if ((uses.get(p.display_name) ?? 0) < 2) return [p.pack_id, name] as const;
+      const inName = new Set(name.toUpperCase().split(/\s+/));
+      const { words, rest } = packWords(p.pack_id);
+      const tier = words.filter((w) => w !== "PACK" && w !== "PACKS" && !inName.has(w) && !inName.has(w.replace(/S$/, "")));
+      return [p.pack_id, !rest && tier.length ? `${name} · ${tier.map(titleWord).join(" ")}` : name] as const;
+    }),
+  );
 }

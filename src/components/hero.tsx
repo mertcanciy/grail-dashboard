@@ -1,4 +1,6 @@
 import type { GrailToken } from "@/lib/grail/types";
+import { ACTIVITY_PAGE_SIZE, MAX_ACTIVITY_PAGES } from "@/lib/grail/api";
+import { formatNumber } from "@/lib/format";
 import { CountUp, type CountFormat } from "./count-up";
 import { Slab } from "./slab";
 import { SlabMarquee } from "./slab-marquee";
@@ -38,10 +40,11 @@ export function Hero({
   /** When the 7-day trading snapshot was computed; it is cached separately from prices. */
   flowAt: number;
   /** Tokens missing from, or only partly counted in, the 7-day stats. */
-  coverage?: { failed: string[]; truncated: string[] };
+  coverage?: { failed: string[]; interrupted: string[]; truncated: string[] };
   maxAgeSec: number;
 }) {
-  const undercounted = coverage ? coverage.failed.length + coverage.truncated.length : 0;
+  const unanswered = coverage ? coverage.failed.length + coverage.interrupted.length : 0;
+  const truncated = coverage?.truncated.length ?? 0;
   const featured = [...tokens].sort((a, b) => Number(b.market_cap) - Number(a.market_cap));
 
   return (
@@ -55,9 +58,16 @@ export function Hero({
                 7-day trading stats from <TimeAgo iso={new Date(flowAt).toISOString()} serverNow={updatedAt} />
               </span>
             )}
-            {undercounted > 0 && (
+            {unanswered > 0 && (
               <span className="text-gold-ink">
-                7-day stats leave out part of {undercounted} {undercounted === 1 ? "gToken" : "gTokens"} Grail didn&apos;t fully return
+                7-day stats are missing part of {unanswered} {unanswered === 1 ? "gToken" : "gTokens"}: Grail&apos;s activity feed
+                didn&apos;t answer
+              </span>
+            )}
+            {truncated > 0 && (
+              <span className="text-gold-ink">
+                7-day stats for {truncated} busy {truncated === 1 ? "gToken cover" : "gTokens cover"} only the newest{" "}
+                {formatNumber(MAX_ACTIVITY_PAGES * ACTIVITY_PAGE_SIZE)} events
               </span>
             )}
           </p>

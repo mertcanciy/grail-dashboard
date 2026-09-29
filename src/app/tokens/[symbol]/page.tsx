@@ -97,6 +97,7 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
             Swaps, liquidity moves and pack claims, newest first.
             {view.allTimeEvents != null && ` ${view.allTimeEvents.toLocaleString("en-US")} events since launch.`}
             {view.activityStatus === "failed" && " Grail's activity feed didn't respond; showing no events rather than guessing."}
+            {view.activityStatus === "interrupted" && " Grail's activity feed stopped answering partway; older events may be missing."}
           </p>
           <div className="mt-4">
             <TradeTape events={view.recent} chainId={token.chain_id} now={view.now} showToken={false} />

@@ -45,6 +45,8 @@ export interface ItemQuote {
   symbol: string;
   tokensPerItem: number;
   quoteSymbol: string;
+  /** Robinhood ticker used for the quote asset's USD rate (the peg ticker, e.g. GOOGL for the GOOGLc token). */
+  quoteTicker: string;
   spotUsd: number;
   depth: DepthPoint[];
   /** Most USD the pool can pay out on a sell, when a sell of one item would drain it. */
@@ -151,10 +153,11 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
   // Stock-paired pools quote in an equity token; convert with Robinhood's live quote for that equity. Without
   // one, fall back to the rate implied by Grail's USD price and the smallest sell quote, which hides any gap
   // between the pool and Grail's price.
+  const quoteTicker = (token.peg_ticker?.trim() || String(symbol)).toUpperCase();
   let usdPerQuote = 1;
   let quoteUsdSource: ItemQuote["quoteUsdSource"] = "stablecoin";
   if (!isUsd) {
-    const live = await getEquityQuote(token.peg_ticker?.trim() || String(symbol));
+    const live = await getEquityQuote(quoteTicker);
     if (live) {
       usdPerQuote = live.mid;
       quoteUsdSource = "robinhood";
@@ -180,6 +183,7 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
     symbol: token.symbol,
     tokensPerItem: perItem,
     quoteSymbol: symbol,
+    quoteTicker,
     spotUsd: price * perItem,
     ...capDepth(depth),
     quoteUsd: usdPerQuote,
@@ -224,7 +228,7 @@ export const getItemQuote = unstable_cache(
       return null;
     }
   },
-  ["item-quote-v2"],
+  ["item-quote-v3"],
   { revalidate: 300, tags: ["grail", "quotes"] },
 );
 

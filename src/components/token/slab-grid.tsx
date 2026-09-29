@@ -10,8 +10,13 @@ import { formatDate } from "@/lib/format";
 
 const INITIAL = 12;
 
-export function SlabGrid({ items, itemName, chainId }: { items: VaultItem[]; itemName: string; chainId: number }) {
+/** `items` is null when Grail's item endpoint didn't answer. */
+export function SlabGrid({ items, itemName, chainId }: { items: VaultItem[] | null; itemName: string; chainId: number }) {
   const [expanded, setExpanded] = useState(false);
+  if (!items)
+    return (
+      <p className="text-xs text-gold-ink">Grail&apos;s item list didn&apos;t load right now; the vaulted count above is still current.</p>
+    );
   if (!items.length) return <p className="text-xs text-slate">Grail hasn&apos;t published the individual items for this one yet.</p>;
   const shown = expanded ? items : items.slice(0, INITIAL);
 

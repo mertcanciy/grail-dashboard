@@ -98,7 +98,7 @@ export function OnchainPanel({
       {(drift != null || impliedQuoteUsd != null) && (
         <p className="mt-5 rounded-xl bg-gold-wash px-3.5 py-2.5 text-sm text-gold-ink">
           {drift != null
-            ? `${!isUsd ? `At ${pool!.quoteSymbol} ${formatUsd(pegUsd!)} (Robinhood), the pool price is ${formatPrice(poolUsd)}. ` : ""}${
+            ? `${!isUsd ? `At ${token.peg_ticker?.trim().toUpperCase() || pool!.quoteSymbol} ${formatUsd(pegUsd!)} (Robinhood), the pool price is ${formatPrice(poolUsd)}. ` : ""}${
                 Math.abs(drift) < 1
                   ? `The pool price matches Grail's quoted ${formatPrice(apiPrice)} to within 1%.`
                   : `The pool price is ${Math.abs(drift).toFixed(1)}% ${drift > 0 ? "above" : "below"} Grail's quoted ${formatPrice(apiPrice)}.`

@@ -23,6 +23,7 @@ const USER_AGENT = "grail-dashboard/0.1 (+https://github.com/mertcanciy/grail-da
 const DAY_MS = 86_400_000;
 /** Largest page Grail's activity endpoints serve. */
 const PAGE_SIZE = 200;
+export const ACTIVITY_PAGE_SIZE = PAGE_SIZE;
 
 export const REVALIDATE = {
   market: 120,
@@ -134,7 +135,7 @@ export function getActivityPage(symbol: string, page = 1, limit = PAGE_SIZE) {
   );
 }
 
-/** Pages fetched at once while walking activity; Grail takes ~2.5 s per 200-event page. */
+/** Pages fetched at once while walking activity; Grail takes ~1 s per 200-event page. */
 const PAGE_BATCH = 4;
 /** 60 pages × 200 events covers a week of the busiest token so far (VLAD: ~9,500 events in its first day). */
 export const MAX_ACTIVITY_PAGES = 60;
@@ -142,8 +143,10 @@ export const MAX_ACTIVITY_PAGES = 60;
 export interface ActivityWalk<T> {
   events: T[];
   allTimeCount: number;
-  /** False when the page limit was reached before the window's start, so older events in the window are missing. */
+  /** False when older events in the window are missing: the page limit was reached or a page failed. */
   complete: boolean;
+  /** Set when a page after the first failed; `events` holds everything read before it. */
+  error?: unknown;
 }
 
 /**
@@ -163,8 +166,14 @@ export async function walkActivity<T extends Pick<Activity, "tx_hash" | "log_ind
   // Page 1 alone first: it tells us how many pages exist, and most tokens fit on it.
   for (let first = 1; first <= lastPage; first += first === 1 ? 1 : PAGE_BATCH) {
     const pages = first === 1 ? [1] : Array.from({ length: Math.min(PAGE_BATCH, lastPage - first + 1) }, (_, i) => first + i);
-    const batch = await Promise.all(pages.map(fetchPage));
-    for (const data of batch) {
+    const batch = await Promise.allSettled(pages.map(fetchPage));
+    for (const settled of batch) {
+      if (settled.status === "rejected") {
+        // Nothing read yet means the feed is down: let the caller treat the token as failed.
+        if (first === 1) throw settled.reason;
+        return { events, allTimeCount: total, complete: false, error: settled.reason };
+      }
+      const data = settled.value;
       total = data.count;
       lastPage = Math.min(maxPages, Math.max(1, Math.ceil(data.count / PAGE_SIZE)));
       let reachedEnd = false;
@@ -202,7 +211,7 @@ export async function getMarketActivity(tokens: GrailToken[], days = 7) {
     try {
       return { symbol: t.symbol, ok: true, ...(await getActivityWindow(t.symbol, days, MAX_ACTIVITY_PAGES, t)) };
     } catch {
-      return { symbol: t.symbol, ok: false, events: [] as TokenActivity[], allTimeCount: 0, complete: false };
+      return { symbol: t.symbol, ok: false, events: [] as TokenActivity[], allTimeCount: 0, complete: false, error: true };
     }
   });
   const events = results.flatMap((r) => r.events);
@@ -214,7 +223,10 @@ export async function getMarketActivity(tokens: GrailToken[], days = 7) {
     /** Tokens whose activity couldn't be loaded, or was cut off by the page limit; their stats are undercounted. */
     coverage: {
       failed: results.filter((r) => !r.ok).map((r) => r.symbol),
-      truncated: results.filter((r) => r.ok && !r.complete).map((r) => r.symbol),
+      /** A later page failed, so only the newest events were counted. */
+      interrupted: results.filter((r) => r.ok && r.error).map((r) => r.symbol),
+      /** Busier than the page limit (`MAX_ACTIVITY_PAGES`) allows reading. */
+      truncated: results.filter((r) => r.ok && !r.error && !r.complete).map((r) => r.symbol),
     },
   };
 }
@@ -262,7 +274,10 @@ export async function getPacks() {
   return data.packs.filter((p) => p.pack_id !== "TEST");
 }
 
-/** Every registered slab behind one reserve, with its grading certificate number and registration tx. */
+/**
+ * Every registered slab behind one reserve, with its grading certificate number and registration tx.
+ * Null when Grail didn't answer, as opposed to `[]` for a reserve with no published items.
+ */
 export async function getReserveItems(reserveSymbol: string) {
   try {
     const data = await grail<Paginated<VaultItem>>(
@@ -272,15 +287,16 @@ export async function getReserveItems(reserveSymbol: string) {
     );
     return data.results;
   } catch {
-    return [];
+    return null;
   }
 }
 
+/** Null when Grail didn't answer, as opposed to `[]` for a collectible with no published items. */
 export async function getOffchainItems(collectibleId: number) {
   try {
     return (await grail<Paginated<VaultItem>>(`offchain-collectibles/${collectibleId}/items`, {}, REVALIDATE.slow)).results;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -291,8 +307,8 @@ export async function getTokenVault(token: Pick<GrailToken, "reserves" | "offcha
     Promise.all(token.offchain_collectibles.map(async (c) => [c.collectible_id, await getOffchainItems(c.collectible_id)] as const)),
   ]);
   return {
-    reserves: Object.fromEntries(reserves) as Record<string, VaultItem[]>,
-    offchain: Object.fromEntries(offchain) as Record<number, VaultItem[]>,
+    reserves: Object.fromEntries(reserves) as Record<string, VaultItem[] | null>,
+    offchain: Object.fromEntries(offchain) as Record<number, VaultItem[] | null>,
   };
 }
 

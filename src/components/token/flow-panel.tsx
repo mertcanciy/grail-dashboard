@@ -17,6 +17,12 @@ export function FlowPanel({ view }: { view: TokenView }) {
             ? "Grail's activity feed didn't respond, so this week's trading can't be shown right now."
             : "Nobody has swapped this gToken in the last seven days."}
       </p>
+      {view.activityStatus === "interrupted" && (
+        <p className="mt-2 rounded-xl bg-gold-wash px-3 py-2 text-xs text-gold-ink">
+          Grail&apos;s activity feed stopped answering partway, so only the most recent{" "}
+          {formatNumber(view.recentWindowEvents)} events of the week were read; totals below undercount the full seven days.
+        </p>
+      )}
       {view.activityStatus === "partial" && (
         <p className="mt-2 rounded-xl bg-gold-wash px-3 py-2 text-xs text-gold-ink">
           Trading was so heavy that only the most recent {formatNumber(view.recentWindowEvents)} events of the week were
