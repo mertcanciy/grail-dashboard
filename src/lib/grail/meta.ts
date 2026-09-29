@@ -1,4 +1,4 @@
-import type { ChainId, GrailToken } from "./types";
+import type { ChainId, GrailToken, ProfileActivity, Reserve } from "./types";
 
 export const CHAINS: Record<ChainId, { name: string; short: string; explorer: string; rpc: string }> = {
   8453: {
@@ -92,11 +92,22 @@ export function imageOf(t: Pick<GrailToken, "image_url">) {
   return t.image_url?.trim() || FALLBACK_IMAGE;
 }
 
-/** Photo of the first vaulted item, for slab-style displays. */
+/**
+ * The reserve a holder can redeem most cheaply (lowest multiplier). Tokens backed by several items (gKIRK: a
+ * 10,000-token card and a 50,000-token hat) are described by this one everywhere a single item is shown.
+ */
+export function primaryReserve<R extends Pick<Reserve, "multiplier">>(t: { reserves: R[] }): R | undefined {
+  let best: R | undefined;
+  for (const r of t.reserves) if (r.multiplier > 0 && (!best || r.multiplier < best.multiplier)) best = r;
+  return best ?? t.reserves[0];
+}
+
+/** Photo of the primary vaulted item, for slab-style displays. */
 export function itemImageOf(t: Pick<GrailToken, "image_url" | "reserves" | "offchain_collectibles">) {
   return (
-    t.reserves.find((r) => r.image_url?.trim())?.image_url ??
-    t.offchain_collectibles.find((c) => c.image_url?.trim())?.image_url ??
+    primaryReserve(t)?.image_url?.trim() ||
+    t.reserves.find((r) => r.image_url?.trim())?.image_url ||
+    t.offchain_collectibles.find((c) => c.image_url?.trim())?.image_url ||
     imageOf(t)
   );
 }
@@ -119,10 +130,10 @@ export function poolVersion(t: Pick<GrailToken, "v4_pool">) {
   return t.v4_pool ? "Uniswap v4" : "Uniswap v3";
 }
 
-/** gTokens needed to redeem one physical item (largest multiplier among backing reserves). */
+/** gTokens needed to redeem the cheapest physical item (smallest multiplier among backing reserves). */
 export function tokensPerItem(t: Pick<GrailToken, "reserves">) {
-  const m = t.reserves.map((r) => r.multiplier).filter((x) => x > 0);
-  return m.length ? Math.min(...m) : 10_000;
+  const m = primaryReserve(t)?.multiplier ?? 0;
+  return m > 0 ? m : 10_000;
 }
 
 export function vaultedItems(t: Pick<GrailToken, "reserves" | "offchain_collectibles">) {
@@ -140,4 +151,67 @@ const GRAIL_WALLET_NAMES = new Set(["grailadmin"]);
 
 export function isGrailWallet(name: string | null | undefined) {
   return !!name && GRAIL_WALLET_NAMES.has(name.trim().toLowerCase());
+}
+
+/** Labels for token activity types (`tokens/{symbol}/activity`). */
+export const ACTIVITY_LABELS: Record<string, string> = {
+  BUY: "Buy",
+  SELL: "Sell",
+  LP_ADD: "Add liquidity",
+  LP_REMOVE: "Remove liquidity",
+  LP_FEE_COLLECT: "Collect fees",
+  PACK_CLAIM: "Pack claim",
+  PACK_NFT_BUY: "Pack NFT buy",
+  PACK_NFT_SELL: "Pack NFT sell",
+  PACK_NFT_TRANSFER_IN: "Pack NFT in",
+  PACK_NFT_TRANSFER_OUT: "Pack NFT out",
+};
+
+/** Labels for wallet activity kinds (`profile/{id}/activity`). */
+export const PROFILE_ACTIVITY_LABELS: Record<string, string> = {
+  buy: "Buy",
+  sell: "Sell",
+  pack_claim: "Pack claim",
+  pack_purchase: "Pack purchase",
+  pack_open: "Opened pack",
+  achievement: "Achievement",
+  lp_add: "Add liquidity",
+  lp_remove: "Remove liquidity",
+  redeem: "Redeem",
+};
+
+const humanize = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\p{L}/u, (m) => m.toUpperCase());
+
+export function activityLabel(type: string) {
+  return ACTIVITY_LABELS[type] ?? humanize(type);
+}
+
+export function profileActivityLabel(kind: string) {
+  const k = kind.toLowerCase();
+  return PROFILE_ACTIVITY_LABELS[k] ?? humanize(k);
+}
+
+/** What a wallet activity row is about when it has no token: the achievement or pack name. */
+export function profileActivitySubject(a: Pick<ProfileActivity, "kind" | "detail" | "token_name" | "token_symbol">) {
+  const detail = a.detail?.trim();
+  if (detail) return a.kind.toLowerCase() === "pack_open" ? humanizePack(detail) : detail;
+  return a.token_name ?? a.token_symbol ?? "";
+}
+
+/** Grail pack ids are run together in capitals ("FOUNDERPACKSVERIFIEDLEGEND"); split the common words out. */
+function humanizePack(id: string) {
+  if (/[a-z\s]/.test(id)) return id;
+  const words = ["FOUNDER", "PACKS", "PACK", "VERIFIED", "LEGEND", "GENESIS", "LAUNCH", "EXPANSION", "SERIES"];
+  let rest = id;
+  const out: string[] = [];
+  while (rest) {
+    const w = words.find((x) => rest.startsWith(x));
+    if (!w) {
+      out.push(rest);
+      break;
+    }
+    out.push(w);
+    rest = rest.slice(w.length);
+  }
+  return out.map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(" ");
 }

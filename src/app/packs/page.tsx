@@ -4,6 +4,7 @@ import { getPacks } from "@/lib/grail/api";
 import { chainOf } from "@/lib/grail/meta";
 import { formatNumber, formatShare, formatUsd } from "@/lib/format";
 import type { Pack } from "@/lib/grail/types";
+import { Freshness } from "@/components/freshness";
 
 export const revalidate = 900;
 
@@ -23,8 +24,13 @@ function sold(p: Pack) {
   return Math.max(0, p.total_initial_units - p.total_remaining_units);
 }
 
-export default async function PacksPage() {
+async function load() {
   const packs = await getPacks();
+  return { packs, renderedAt: Date.now() };
+}
+
+export default async function PacksPage() {
+  const { packs, renderedAt } = await load();
   const totalSold = packs.reduce((s, p) => s + sold(p), 0);
   const revenue = packs.reduce((s, p) => s + sold(p) * Number(p.usdc_price || 0), 0);
   const soldOut = packs.filter((p) => p.total_initial_units > 0 && p.total_remaining_units === 0).length;
@@ -35,6 +41,7 @@ export default async function PacksPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
       <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">Packs</h1>
+      <Freshness at={renderedAt} maxAgeSec={revalidate} className="mt-3" />
       <p className="mt-3 max-w-2xl text-[17px] leading-relaxed text-slate">
         Packs are how many collectors get their first gTokens. Each one holds NFTs that open into tokens backed by real
         vaulted cards.

@@ -1,14 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { TokenView } from "@/lib/token-view";
-import { categoryOf, imageOf, itemImageOf, chainOf, grailTradeUrl, personName, poolVersion, quoteAssetOf, ticker } from "@/lib/grail/meta";
+import { categoryOf, imageOf, itemImageOf, chainOf, primaryReserve, grailTradeUrl, personName, poolVersion, quoteAssetOf, ticker } from "@/lib/grail/meta";
 import { formatDate, formatNumber, formatPrice, formatUsd } from "@/lib/format";
 import { Change } from "../change";
 import { Reveal } from "../reveal";
+import { Freshness } from "../freshness";
 
-export function TokenHeader({ view }: { view: TokenView }) {
+export function TokenHeader({ view, maxAgeSec }: { view: TokenView; maxAgeSec: number }) {
   const { token } = view;
   const hero = itemImageOf(token);
+  const item = primaryReserve(token);
   const chain = chainOf(token.chain_id);
 
   const stats = [
@@ -30,13 +32,16 @@ export function TokenHeader({ view }: { view: TokenView }) {
 
   return (
     <section className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 sm:pt-12">
-      <nav aria-label="Breadcrumb" className="text-sm text-slate">
-        <Link href="/tokens" className="hover:text-graphite">
-          gTokens
-        </Link>
-        <span className="px-1.5" aria-hidden="true">/</span>
-        <span className="text-graphite">{ticker(token)}</span>
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <nav aria-label="Breadcrumb" className="text-sm text-slate">
+          <Link href="/tokens" className="hover:text-graphite">
+            gTokens
+          </Link>
+          <span className="px-1.5" aria-hidden="true">/</span>
+          <span className="text-graphite">{ticker(token)}</span>
+        </nav>
+        <Freshness at={view.now} maxAgeSec={maxAgeSec} />
+      </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[300px_1fr] lg:gap-12">
         <Reveal>
@@ -44,15 +49,15 @@ export function TokenHeader({ view }: { view: TokenView }) {
             <div className="rounded-[16px] border border-hairline bg-paper px-3.5 py-3">
               <div className="flex items-baseline justify-between">
                 <span className="font-display text-base font-semibold">{ticker(token)}</span>
-                <span className="text-xs text-slate">{token.reserves[0]?.category ?? "Collectible"}</span>
+                <span className="text-xs text-slate">{item?.category ?? "Collectible"}</span>
               </div>
-              <div className="mt-0.5 truncate text-xs text-slate" title={token.reserves[0]?.name}>
-                {token.reserves[0]?.name ?? personName(token)}
+              <div className="mt-0.5 truncate text-xs text-slate" title={item?.name}>
+                {item?.name ?? personName(token)}
               </div>
               <div className="gold-rule mt-2.5 h-[2px] rounded-full" />
             </div>
             <div className="relative mt-2.5 aspect-[4/5] overflow-hidden rounded-[16px] bg-[radial-gradient(120%_80%_at_50%_0%,#ffffff_0%,#eef0f4_60%,#e4e7ed_100%)]">
-              <Image src={hero} alt={token.reserves[0]?.name ?? ticker(token)} fill priority sizes="300px" className="object-contain p-4 drop-shadow-[0_14px_18px_rgb(23_25_30/0.2)]" />
+              <Image src={hero} alt={item?.name ?? ticker(token)} fill priority sizes="300px" className="object-contain p-4 drop-shadow-[0_14px_18px_rgb(23_25_30/0.2)]" />
             </div>
           </div>
         </Reveal>

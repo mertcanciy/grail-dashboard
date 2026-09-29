@@ -5,6 +5,7 @@ import { itemValue } from "@/lib/metrics";
 import { formatNumber, formatUsd } from "@/lib/format";
 import type { Candle } from "@/lib/grail/types";
 import { TokenTable, type TokenRow } from "@/components/token-table";
+import { Freshness } from "@/components/freshness";
 
 export const revalidate = 300;
 
@@ -19,9 +20,14 @@ function downsample(candles: Candle[], n = 42) {
   return Array.from({ length: n }, (_, i) => candles[Math.floor(i * step)]).concat([candles[candles.length - 1]]);
 }
 
-export default async function TokensPage() {
+async function load() {
   const { tokens, totalMarketCap } = await getTokens({ timeframe: "1h", windowDays: 7 });
   const holders = await getHolderCounts(tokens);
+  return { tokens, totalMarketCap, holders, renderedAt: Date.now() };
+}
+
+export default async function TokensPage() {
+  const { tokens, totalMarketCap, holders, renderedAt } = await load();
 
   const rows: TokenRow[] = tokens.map((t) => ({
     slug: slugOf(t),
@@ -52,6 +58,7 @@ export default async function TokensPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
       <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">All gTokens</h1>
+      <Freshness at={renderedAt} maxAgeSec={revalidate} className="mt-3" />
       <p className="mt-3 max-w-2xl text-[17px] leading-relaxed text-slate">
         {tokens.length} legends worth {formatUsd(totalMarketCap, { compact: true })} combined, across{" "}
         {formatNumber(totalHolders)} holder positions. &ldquo;One item&rdquo; is what it costs today to collect enough

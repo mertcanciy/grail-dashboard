@@ -56,7 +56,7 @@ export default async function TokenPage(props: PageProps<"/tokens/[symbol]">) {
 
   return (
     <>
-      <TokenHeader view={view} />
+      <TokenHeader view={view} maxAgeSec={revalidate} />
       <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-6 px-5 sm:px-8">
         <PriceChart symbol={slugOf(token)} initial={view.candles7d} livePrice={token.market_price} renderedAt={view.now} />
 

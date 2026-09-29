@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { TokenView } from "@/lib/token-view";
 import { impact } from "@/lib/quotes";
-import { ticker } from "@/lib/grail/meta";
+import { primaryReserve, ticker } from "@/lib/grail/meta";
 import { formatNumber, formatShare, formatUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -27,9 +27,10 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
   const full = quote?.depth.find((d) => d.fraction === 1);
   const buyPremium = full ? impact(full.buyUsd, quote!.spotUsd) : null;
   const sellDiscount = full ? impact(full.sellUsd, quote!.spotUsd) : null;
-  const itemName = token.reserves[0]?.name ?? token.name;
+  const item = primaryReserve(token);
+  const itemName = item?.name ?? token.name;
   const q = encodeURIComponent(searchQuery(itemName));
-  const isCard = /psa|card/i.test(`${itemName} ${token.reserves[0]?.category ?? ""}`);
+  const isCard = /psa|card/i.test(`${itemName} ${item?.category ?? ""}`);
   const piece = isCard ? "card" : "item";
 
   return (

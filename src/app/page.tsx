@@ -15,7 +15,7 @@ export default async function OverviewPage() {
 
   return (
     <>
-      <Hero kpis={o.kpis} tokens={o.tokens} updatedAt={o.now} />
+      <Hero kpis={o.kpis} tokens={o.tokens} updatedAt={o.now} flowAt={o.flowAt} maxAgeSec={revalidate} />
 
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 sm:px-8">
         <LensPanel data={o.lenses} />
