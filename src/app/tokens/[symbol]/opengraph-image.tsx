@@ -3,6 +3,7 @@ import { clipToWindow, getToken } from "@/lib/grail/api";
 import { chainOf, personName, ticker, vaultedItems } from "@/lib/grail/meta";
 import { formatPercent, formatPrice, formatUsd } from "@/lib/format";
 import { OG, OG_SIZE, OgFrame, ogFonts, ogLogo, sparkPath } from "@/lib/og";
+import { PRODUCTION_URL } from "@/lib/site";
 
 export const revalidate = 600;
 export const size = OG_SIZE;
@@ -15,7 +16,7 @@ export default async function Image({ params }: { params: Promise<{ symbol: stri
 
   if (!token) {
     return new ImageResponse(
-      <OgFrame logoSrc={logoSrc} footer="grail-dashboard">
+      <OgFrame logoSrc={logoSrc} footer={new URL(PRODUCTION_URL).host}>
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 72 }}>gToken not found</div>
       </OgFrame>,
       { ...size, fonts },
