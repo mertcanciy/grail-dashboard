@@ -29,5 +29,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Grail's activity `usd_value` is sometimes wildly wrong (LP adds on stock-paired pools reported as $67B). Always pass the token to `getActivityWindow` so `saneUsdValue()` caps values above 2× market cap.
 - The `grailadmin` wallet is Grail's own inventory; exclude it from collector stats via `isGrailWallet()`.
 - Components rendered inside the sticky header must portal fixed overlays to `document.body` (the header's backdrop-filter creates a containing block).
-- Deploy: `vercel deploy --prod` (project `mertcanciys-projects/grail-dashboard`). Public URL https://graildashboard.vercel.app; the older https://grail-dashboard-seven.vercel.app alias still points at production.
+- Deploy: `vercel deploy --prod` (project `mertcanciys-projects/grail-dashboard`). Public URL https://graildashboard.vercel.app (`PRODUCTION_URL` in `src/lib/site.ts`, a project domain that follows every production deploy); the older https://grail-dashboard-seven.vercel.app permanently redirects to it from `next.config.ts`.
 - Pinned dependency versions are all at least 7 days old at install time; keep that rule when upgrading.
