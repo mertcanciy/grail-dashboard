@@ -68,7 +68,7 @@ export function OgFrame({ logoSrc, children, footer }: { logoSrc: string; childr
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoSrc} width={52} height={52} style={{ borderRadius: 14 }} alt="" />
-        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 30 }}>Grail Pulse</div>
+        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 30 }}>Grail Dashboard</div>
       </div>
       <div style={{ display: "flex", flex: 1, flexDirection: "column", justifyContent: "center" }}>{children}</div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 22, color: OG.slate }}>

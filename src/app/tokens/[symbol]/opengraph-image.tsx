@@ -8,7 +8,7 @@ import { PRODUCTION_URL } from "@/lib/site";
 export const revalidate = 600;
 export const size = OG_SIZE;
 export const contentType = "image/png";
-export const alt = "gToken price and vault summary on Grail Pulse";
+export const alt = "gToken price and vault summary on Grail Dashboard";
 
 export default async function Image({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
