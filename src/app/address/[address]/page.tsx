@@ -2,24 +2,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { WALLET_FEED_DAYS, loadWallet } from "@/lib/wallet";
-import {
-  CHAINS,
-  explorerAddress,
-  explorerTx,
-  imageOf,
-  personName,
-  profileActivityLabel,
-  profileActivitySubject,
-  slugOf,
-  ticker,
-} from "@/lib/grail/meta";
+import { loadWallet } from "@/lib/wallet";
+import { toActivityRows } from "@/lib/activity-rows";
+import { CHAINS, explorerAddress, imageOf, personName, slugOf, ticker } from "@/lib/grail/meta";
 import { shortAddress } from "@/lib/metrics";
 import { formatDate, formatNumber, formatShare, formatTokenAmount, formatUsd } from "@/lib/format";
 import { AddressRow } from "@/components/address-row";
 import { Freshness } from "@/components/freshness";
-import { TimeAgo } from "@/components/time-ago";
 import { Change } from "@/components/change";
+import { ActivityList } from "@/components/wallet/activity-list";
+import { ChainActivity } from "@/components/wallet/chain-activity";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 120;
@@ -45,7 +37,6 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
   const w = await loadWallet(address);
   if (!w) notFound();
   const name = w.overview?.username ?? w.overview?.display_name ?? shortAddress(w.address);
-  const bySymbol = new Map(w.tokens.map((t) => [t.symbol.toLowerCase(), t]));
 
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
@@ -212,60 +203,12 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
           <h2 id="activity-title" className="font-display text-xl font-semibold tracking-tight">
             Recent activity
           </h2>
-          {w.activitySource === "chain" && (
-            <p className="mt-1 text-xs text-slate">
-              {w.activityPrivate ? `${name} keeps their Grail activity private, so this` : "This"} is the wallet&apos;s
-              on-chain gToken activity from the last {WALLET_FEED_DAYS} days, read from Grail&apos;s public token feeds.
-              {w.activityIncomplete && " Some token feeds didn't load fully, so older trades may be missing."}
-            </p>
-          )}
-          {w.activity.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate">
-              {w.activitySource === "grail"
-                ? "No recent activity."
-                : w.activitySource === "chain"
-                  ? `No on-chain gToken activity in the last ${WALLET_FEED_DAYS} days.`
-                  : "Grail's activity feeds didn't respond; try again in a moment."}
-            </p>
+          {w.activitySource === "chain" ? (
+            <ChainActivity key={w.address} address={w.address} name={name} isPrivate={w.activityPrivate} renderedAt={w.now} />
+          ) : w.activity.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate">No recent activity.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-hairline">
-              {w.activity.slice(0, 25).map((a, i) => {
-                const t = a.token_symbol ? bySymbol.get(a.token_symbol.toLowerCase()) : undefined;
-                const kind = a.kind.toLowerCase();
-                const tx = a.tx_hash ? explorerTx(a.chain_id, a.tx_hash) : undefined;
-                return (
-                  <li key={`${a.tx_hash}-${i}`} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                          kind === "buy" ? "bg-up/10 text-up" : kind === "sell" ? "bg-down/10 text-down" : "bg-muted text-slate",
-                        )}
-                      >
-                        {profileActivityLabel(kind)}
-                      </span>
-                      {t ? (
-                        <Link href={`/tokens/${slugOf(t)}`} className="truncate font-medium hover:text-gold-ink">
-                          {ticker(t)}
-                        </Link>
-                      ) : (
-                        <span className="truncate">{profileActivitySubject(a, w.packNames)}</span>
-                      )}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <span className="tabular font-medium">{a.amount_usdc ? formatUsd(Number(a.amount_usdc)) : ""}</span>
-                      {tx ? (
-                        <a href={tx} target="_blank" rel="noreferrer" className="w-20 text-right text-xs text-slate hover:text-graphite">
-                          <TimeAgo iso={a.timestamp} serverNow={w.now} />
-                        </a>
-                      ) : (
-                        <TimeAgo iso={a.timestamp} serverNow={w.now} className="w-20 text-right text-xs text-slate" />
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <ActivityList rows={toActivityRows(w.activity, w.tokens, w.packNames)} now={w.now} />
           )}
         </section>
       </div>

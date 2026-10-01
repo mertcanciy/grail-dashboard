@@ -11,6 +11,7 @@ import {
 } from "./grail/api";
 import { packDisplayNames, tokensPerItem, walletActivityFromFeed } from "./grail/meta";
 import type { GrailToken } from "./grail/types";
+import { WALLET_FEED_DAYS, feedStatus, toActivityRows, type ActivityRow, type FeedStatus } from "./activity-rows";
 import { clientFor } from "./onchain";
 
 export interface WalletHolding {
@@ -48,9 +49,6 @@ async function onchainBalances(address: Address, tokens: GrailToken[]) {
   return out;
 }
 
-/** How far back wallets without readable Grail activity are searched in the public token feeds. */
-export const WALLET_FEED_DAYS = 7;
-
 /** Grail answers 403 for profiles whose owner made their portfolio or activity private. */
 const privateOrNull = (e: unknown) => (e instanceof GrailApiError && e.status === 403 ? ("private" as const) : null);
 
@@ -67,10 +65,6 @@ export const loadWallet = cache(async (raw: string) => {
   ]);
   const holdings = holdingsRes === "private" ? null : holdingsRes;
   const grailActivity = activityRes === "private" ? null : activityRes;
-
-  // Private profiles and wallets without a Grail account still trade on-chain, and those trades are public.
-  const feed = grailActivity ? null : await getMarketActivity(tokens, WALLET_FEED_DAYS).catch(() => null);
-  const feedCoverage = feed?.coverage;
   const bySymbol = new Map(tokens.map((t) => [t.symbol.toLowerCase(), t]));
 
   let rows: WalletHolding[];
@@ -111,16 +105,12 @@ export const loadWallet = cache(async (raw: string) => {
       lpUsd: holdings ? Number(holdings.totals.lp_usd) : null,
       redeemableItems: rows.reduce((s, r) => s + Math.floor(r.itemProgress + 1e-9), 0),
     },
-    activity: grailActivity
-      ? grailActivity.items
-      : feed
-        ? walletActivityFromFeed(feed.events, address, tokens)
-        : [],
-    activitySource: grailActivity ? ("grail" as const) : feed ? ("chain" as const) : null,
-    /** Some token feeds failed or were cut short, so older on-chain trades may be missing. */
-    activityIncomplete: feedCoverage
-      ? feedCoverage.failed.length + feedCoverage.interrupted.length + feedCoverage.truncated.length > 0
-      : false,
+    activity: grailActivity?.items ?? [],
+    /**
+     * "chain": private profiles and wallets without a Grail account still trade on-chain, and those trades are
+     * public. They're loaded separately (`loadChainActivity`) so walking every token feed never blocks this page.
+     */
+    activitySource: grailActivity ? ("grail" as const) : ("chain" as const),
     holdingsPrivate: holdingsRes === "private",
     activityPrivate: activityRes === "private",
     packNames: packDisplayNames(packs),
@@ -130,3 +120,26 @@ export const loadWallet = cache(async (raw: string) => {
 });
 
 export type WalletView = NonNullable<Awaited<ReturnType<typeof loadWallet>>>;
+
+export interface ChainActivity {
+  rows: ActivityRow[];
+  status: FeedStatus;
+  days: number;
+  now: number;
+}
+
+/**
+ * Walks every token feed (the same pages as the market snapshot), so call it from a dynamic route, never from an
+ * ISR render: ISR regeneration refetches each expired page before answering, a dynamic request serves the cached
+ * pages at once and refreshes them in the background.
+ */
+export async function loadChainActivity(address: string): Promise<ChainActivity> {
+  const { tokens } = await getTokens({ timeframe: "1d", windowDays: 1 });
+  const feed = await getMarketActivity(tokens, WALLET_FEED_DAYS).catch(() => null);
+  return {
+    rows: feed ? toActivityRows(walletActivityFromFeed(feed.events, address, tokens), tokens) : [],
+    status: feed ? feedStatus(feed.coverage, tokens.length) : "unavailable",
+    days: WALLET_FEED_DAYS,
+    now: Date.now(),
+  };
+}
