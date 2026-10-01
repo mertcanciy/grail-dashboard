@@ -9,7 +9,8 @@ import {
   walletActivityFromFeed,
 } from "./grail/meta";
 import { holderConcentration } from "./metrics";
-import type { Activity, GrailToken, Paginated, TokenActivity } from "./grail/types";
+import { feedStatus, toActivityRows } from "./activity-rows";
+import type { Activity, GrailToken, Paginated, ProfileActivity, TokenActivity } from "./grail/types";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -197,5 +198,43 @@ describe("walletActivityFromFeed", () => {
   it("labels token-feed kinds that profile activity doesn't use", () => {
     expect(profileActivityLabel("pack_nft_buy")).toBe("Pack NFT buy");
     expect(profileActivityLabel("lp_fee_collect")).toBe("Collect fees");
+  });
+});
+
+describe("toActivityRows", () => {
+  const tokens = [{ symbol: "JENSEN", name: "gJENSEN" }];
+  const row = (p: Partial<ProfileActivity>) =>
+    ({ chain_id: 4663, kind: "buy", timestamp: "2026-09-25T00:00:00Z", token_symbol: null, token_name: null, amount_usdc: null, side: null, price: null, token_amount: null, tx_hash: null, image_url: null, ...p }) as ProfileActivity;
+
+  it("links known gTokens and names achievements and packs", () => {
+    const rows = toActivityRows(
+      [
+        row({ token_symbol: "jensen", amount_usdc: "12.5", tx_hash: "0xabc" }),
+        row({ kind: "achievement", detail: "Six Figures" }),
+        row({ kind: "pack_open", detail: "GRAILGENESISPACKS6" }),
+      ],
+      tokens,
+      new Map([["GRAILGENESISPACKS6", "2026 Young Kings Series #6"]]),
+    );
+    expect(rows[0]).toMatchObject({ label: "Buy", ticker: "gJENSEN", href: "/tokens/jensen", usd: 12.5 });
+    expect(rows[0].txUrl).toBe("https://robinhoodchain.blockscout.com/tx/0xabc");
+    expect(rows.slice(1).map((r) => [r.label, r.subject, r.href, r.usd, r.txUrl])).toEqual([
+      ["Achievement", "Six Figures", null, null, null],
+      ["Opened pack", "2026 Young Kings Series #6", null, null, null],
+    ]);
+  });
+
+  it("caps the list", () => {
+    expect(toActivityRows(Array.from({ length: 40 }, () => row({})), tokens)).toHaveLength(25);
+  });
+});
+
+describe("feedStatus", () => {
+  const none: string[] = [];
+  it("separates a full outage from partial gaps", () => {
+    expect(feedStatus({ failed: none, interrupted: none, truncated: none }, 3)).toBe("ok");
+    expect(feedStatus({ failed: ["gMJ"], interrupted: none, truncated: none }, 3)).toBe("incomplete");
+    expect(feedStatus({ failed: none, interrupted: none, truncated: ["VLAD"] }, 3)).toBe("incomplete");
+    expect(feedStatus({ failed: ["a", "b", "c"], interrupted: none, truncated: none }, 3)).toBe("unavailable");
   });
 });
