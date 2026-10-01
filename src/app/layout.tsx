@@ -13,7 +13,7 @@ const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: [
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   twitter: { card: "summary_large_image" },
-  title: { default: "Grail Pulse: live gToken dashboard", template: "%s · Grail Pulse" },
+  title: { default: "Grail Dashboard: live gToken prices, trades and vault", template: "%s · Grail Dashboard" },
   description:
     "Prices, trading flow, holders and vault backing for every Grail gToken: tokens backed by PSA 10 cards and real-world collectibles.",
 };

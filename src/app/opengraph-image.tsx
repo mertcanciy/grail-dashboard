@@ -7,7 +7,7 @@ import { OG, OG_SIZE, OgFrame, ogFonts, ogLogo } from "@/lib/og";
 export const revalidate = 600;
 export const size = OG_SIZE;
 export const contentType = "image/png";
-export const alt = "Grail Pulse: live dashboard for Grail gTokens";
+export const alt = "Grail Dashboard: live data for every Grail gToken";
 
 export default async function Image() {
   const [{ tokens, totalMarketCap }, stats, fonts, logoSrc] = await Promise.all([

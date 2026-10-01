@@ -1,4 +1,4 @@
-# Grail Pulse
+# Grail Dashboard
 
 An independent, live dashboard for [Grail](https://grail.xyz), where PSA 10 cards and authenticated memorabilia sit in an insured vault and each legend gets a single tradable ERC-20 (gYAMAL, gSWIFT, gMJ, …).
 

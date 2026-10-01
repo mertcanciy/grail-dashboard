@@ -45,9 +45,9 @@ export function SiteHeader() {
         className="relative mx-auto max-w-7xl rounded-2xl backdrop-blur-xl"
       >
         <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-4">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-lg" aria-label="Grail Pulse home" onClick={() => setMenuOpen(false)}>
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-lg" aria-label="Grail Dashboard home" onClick={() => setMenuOpen(false)}>
             <GrailMark className="size-8" />
-            <span className="whitespace-nowrap font-display text-[17px] font-semibold tracking-tight">Grail Pulse</span>
+            <span className="whitespace-nowrap font-display text-[17px] font-semibold tracking-tight">Grail Dashboard</span>
           </Link>
 
           <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
