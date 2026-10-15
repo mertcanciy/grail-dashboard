@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { erc20Abi, isAddress, type Address } from "viem";
+import { erc20Abi, isAddress, type Address, type PublicClient } from "viem";
 import {
   GrailApiError,
   getMarketActivity,
@@ -23,14 +23,22 @@ export interface WalletHolding {
   itemProgress: number;
 }
 
+export type BalanceStatus = "ok" | "partial" | "failed";
+
 /** Wallets without a Grail account still hold gTokens; read their balances straight from each chain. */
-async function onchainBalances(address: Address, tokens: GrailToken[]) {
+export async function onchainBalances(
+  address: Address,
+  tokens: GrailToken[],
+  client: (chainId: number) => Pick<PublicClient, "multicall"> = clientFor,
+) {
   const byChain = new Map<number, GrailToken[]>();
   for (const t of tokens) byChain.set(t.chain_id, [...(byChain.get(t.chain_id) ?? []), t]);
-  const out = new Map<string, number>();
+  const balances = new Map<string, number>();
+  /** Symbols whose balance couldn't be read, so a missing balance is never mistaken for zero. */
+  const failed: string[] = [];
   await Promise.all(
     [...byChain.entries()].map(async ([chainId, list]) => {
-      const results = await clientFor(chainId)
+      const results = await client(chainId)
         .multicall({
           allowFailure: true,
           contracts: list.map((t) => ({
@@ -40,13 +48,19 @@ async function onchainBalances(address: Address, tokens: GrailToken[]) {
             args: [address] as const,
           })),
         })
-        .catch(() => []);
+        .catch(() => null);
+      if (!results) {
+        failed.push(...list.map((t) => t.symbol));
+        return;
+      }
       results.forEach((r, i) => {
-        if (r.status === "success") out.set(list[i].symbol, Number(r.result) / 10 ** list[i].decimals);
+        if (r.status === "success") balances.set(list[i].symbol, Number(r.result) / 10 ** list[i].decimals);
+        else failed.push(list[i].symbol);
       });
     }),
   );
-  return out;
+  const status: BalanceStatus = failed.length === 0 ? "ok" : failed.length >= tokens.length ? "failed" : "partial";
+  return { balances, failed, status };
 }
 
 /** Grail answers 403 for profiles whose owner made their portfolio or activity private. */
@@ -69,6 +83,7 @@ export const loadWallet = cache(async (raw: string) => {
 
   let rows: WalletHolding[];
   let source: "grail" | "chain";
+  let balanceStatus: BalanceStatus = "ok";
   if (holdings) {
     source = "grail";
     rows = holdings.tokens.flatMap((h) => {
@@ -85,7 +100,8 @@ export const loadWallet = cache(async (raw: string) => {
     });
   } else {
     source = "chain";
-    const balances = await onchainBalances(address as Address, tokens);
+    const { balances, status } = await onchainBalances(address as Address, tokens);
+    balanceStatus = status;
     rows = tokens.flatMap((token) => {
       const balance = balances.get(token.symbol) ?? 0;
       if (balance <= 1e-9) return [];
@@ -97,6 +113,8 @@ export const loadWallet = cache(async (raw: string) => {
   return {
     address,
     source,
+    /** "partial"/"failed" when some or all on-chain balance reads failed; rows and totals then undercount. */
+    balanceStatus,
     overview,
     rows,
     totals: {
