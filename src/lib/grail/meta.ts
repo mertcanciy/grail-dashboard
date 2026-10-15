@@ -16,7 +16,9 @@ export const CHAINS: Record<ChainId, { name: string; short: string; explorer: st
 };
 
 export function chainOf(id: number) {
-  return CHAINS[id as ChainId] ?? { name: `Chain ${id}`, short: `${id}`, explorer: "", rpc: "" };
+  return Object.hasOwn(CHAINS, id)
+    ? CHAINS[id as ChainId]
+    : { name: `Chain ${id}`, short: `${id}`, explorer: "", rpc: "" };
 }
 
 export function explorerAddress(chainId: number, address: string) {
@@ -29,36 +31,36 @@ export function explorerTx(chainId: number, tx: string) {
   return base ? `${base}/tx/${tx}` : undefined;
 }
 
-const PEOPLE: Record<string, string> = {
-  WEMBY: "Victor Wembanyama",
-  YAMAL: "Lamine Yamal",
-  MJ: "Michael Jordan",
-  OHTANI: "Shohei Ohtani",
-  MBAPPE: "Kylian Mbappé",
-  BRADY: "Tom Brady",
-  KOBE: "Kobe Bryant",
-  CADE: "Cade Cunningham",
-  PIKA: "Pikachu",
-  CHAR: "Charizard",
-  BRON: "LeBron James",
-  MONK: "Monkey D. Luffy",
-  BRUN: "Jalen Brunson",
-  SHAI: "Shai Gilgeous-Alexander",
-  SPEED: "IShowSpeed",
-  PULI: "Christian Pulisic",
-  MESSI: "Lionel Messi",
-  DOUE: "Désiré Doué",
-  RONALDO: "Cristiano Ronaldo",
-  ELON: "Elon Musk",
-  SWIFT: "Taylor Swift",
-  KIRK: "Charlie Kirk",
-  COOP: "Cooper Flagg",
-  ALLEN: "Josh Allen",
-  KAI: "Kai Cenat",
-  VITALIK: "Vitalik Buterin",
-  JENSEN: "Jensen Huang",
-  VLAD: "Vlad Tenev",
-};
+const PEOPLE: ReadonlyMap<string, string> = new Map([
+  ["WEMBY", "Victor Wembanyama"],
+  ["YAMAL", "Lamine Yamal"],
+  ["MJ", "Michael Jordan"],
+  ["OHTANI", "Shohei Ohtani"],
+  ["MBAPPE", "Kylian Mbappé"],
+  ["BRADY", "Tom Brady"],
+  ["KOBE", "Kobe Bryant"],
+  ["CADE", "Cade Cunningham"],
+  ["PIKA", "Pikachu"],
+  ["CHAR", "Charizard"],
+  ["BRON", "LeBron James"],
+  ["MONK", "Monkey D. Luffy"],
+  ["BRUN", "Jalen Brunson"],
+  ["SHAI", "Shai Gilgeous-Alexander"],
+  ["SPEED", "IShowSpeed"],
+  ["PULI", "Christian Pulisic"],
+  ["MESSI", "Lionel Messi"],
+  ["DOUE", "Désiré Doué"],
+  ["RONALDO", "Cristiano Ronaldo"],
+  ["ELON", "Elon Musk"],
+  ["SWIFT", "Taylor Swift"],
+  ["KIRK", "Charlie Kirk"],
+  ["COOP", "Cooper Flagg"],
+  ["ALLEN", "Josh Allen"],
+  ["KAI", "Kai Cenat"],
+  ["VITALIK", "Vitalik Buterin"],
+  ["JENSEN", "Jensen Huang"],
+  ["VLAD", "Vlad Tenev"],
+]);
 
 /** Grail's API is inconsistent: most tokens have symbol "gX", a few have name "gX" and symbol "X". */
 export function ticker(t: Pick<GrailToken, "symbol" | "name">) {
@@ -81,7 +83,8 @@ const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s-])\p{L}/gu, (m)
  */
 export function personName(t: Pick<GrailToken, "symbol" | "name">) {
   const base = baseTicker(t);
-  if (PEOPLE[base]) return PEOPLE[base];
+  const known = PEOPLE.get(base);
+  if (known) return known;
   const name = t.name.trim().replace(/^g(?=[A-Z0-9])/, "");
   return titleCase(name.length >= base.length ? name : base);
 }
@@ -154,41 +157,41 @@ export function isGrailWallet(name: string | null | undefined) {
 }
 
 /** Labels for token activity types (`tokens/{symbol}/activity`). */
-export const ACTIVITY_LABELS: Record<string, string> = {
-  BUY: "Buy",
-  SELL: "Sell",
-  LP_ADD: "Add liquidity",
-  LP_REMOVE: "Remove liquidity",
-  LP_FEE_COLLECT: "Collect fees",
-  PACK_CLAIM: "Pack claim",
-  PACK_NFT_BUY: "Pack NFT buy",
-  PACK_NFT_SELL: "Pack NFT sell",
-  PACK_NFT_TRANSFER_IN: "Pack NFT in",
-  PACK_NFT_TRANSFER_OUT: "Pack NFT out",
-};
+export const ACTIVITY_LABELS: ReadonlyMap<string, string> = new Map([
+  ["BUY", "Buy"],
+  ["SELL", "Sell"],
+  ["LP_ADD", "Add liquidity"],
+  ["LP_REMOVE", "Remove liquidity"],
+  ["LP_FEE_COLLECT", "Collect fees"],
+  ["PACK_CLAIM", "Pack claim"],
+  ["PACK_NFT_BUY", "Pack NFT buy"],
+  ["PACK_NFT_SELL", "Pack NFT sell"],
+  ["PACK_NFT_TRANSFER_IN", "Pack NFT in"],
+  ["PACK_NFT_TRANSFER_OUT", "Pack NFT out"],
+]);
 
 /** Labels for wallet activity kinds (`profile/{id}/activity`). */
-export const PROFILE_ACTIVITY_LABELS: Record<string, string> = {
-  buy: "Buy",
-  sell: "Sell",
-  pack_claim: "Pack claim",
-  pack_purchase: "Pack purchase",
-  pack_open: "Opened pack",
-  achievement: "Achievement",
-  lp_add: "Add liquidity",
-  lp_remove: "Remove liquidity",
-  redeem: "Redeem",
-};
+export const PROFILE_ACTIVITY_LABELS: ReadonlyMap<string, string> = new Map([
+  ["buy", "Buy"],
+  ["sell", "Sell"],
+  ["pack_claim", "Pack claim"],
+  ["pack_purchase", "Pack purchase"],
+  ["pack_open", "Opened pack"],
+  ["achievement", "Achievement"],
+  ["lp_add", "Add liquidity"],
+  ["lp_remove", "Remove liquidity"],
+  ["redeem", "Redeem"],
+]);
 
 const humanize = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\p{L}/u, (m) => m.toUpperCase());
 
 export function activityLabel(type: string) {
-  return ACTIVITY_LABELS[type] ?? humanize(type);
+  return ACTIVITY_LABELS.get(type) ?? humanize(type);
 }
 
 export function profileActivityLabel(kind: string) {
   const k = kind.toLowerCase();
-  return PROFILE_ACTIVITY_LABELS[k] ?? ACTIVITY_LABELS[k.toUpperCase()] ?? humanize(k);
+  return PROFILE_ACTIVITY_LABELS.get(k) ?? ACTIVITY_LABELS.get(k.toUpperCase()) ?? humanize(k);
 }
 
 /** A wallet's rows from the public per-token activity feeds, shaped like `profile/{id}/activity` rows, newest first. */
