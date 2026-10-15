@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PublicClient } from "viem";
 import { walkActivity } from "./grail/api";
 import {
   packDisplayNames,
@@ -10,6 +11,7 @@ import {
 } from "./grail/meta";
 import { holderConcentration } from "./metrics";
 import { feedStatus, toActivityRows } from "./activity-rows";
+import { onchainBalances } from "./wallet";
 import type { Activity, GrailToken, Paginated, ProfileActivity, TokenActivity } from "./grail/types";
 
 const HOUR = 3_600_000;
@@ -236,5 +238,43 @@ describe("feedStatus", () => {
     expect(feedStatus({ failed: ["gMJ"], interrupted: none, truncated: none }, 3)).toBe("incomplete");
     expect(feedStatus({ failed: none, interrupted: none, truncated: ["VLAD"] }, 3)).toBe("incomplete");
     expect(feedStatus({ failed: ["a", "b", "c"], interrupted: none, truncated: none }, 3)).toBe("unavailable");
+  });
+});
+
+describe("onchainBalances", () => {
+  const tokens = [
+    { symbol: "gCOOP", chain_id: 8453, token_address: "0x1", decimals: 18 },
+    { symbol: "gKAI", chain_id: 8453, token_address: "0x2", decimals: 6 },
+    { symbol: "gJET", chain_id: 4663, token_address: "0x3", decimals: 18 },
+  ] as GrailToken[];
+  type Result = { status: "success"; result: bigint } | { status: "failure"; error: Error };
+  const clients = (byChain: Record<number, Result[] | "reject">) => (chainId: number) => ({
+    multicall: (async () => {
+      const r = byChain[chainId];
+      if (r === "reject") throw new Error("rpc down");
+      return r;
+    }) as unknown as PublicClient["multicall"],
+  });
+  const ok = (v: bigint): Result => ({ status: "success", result: v });
+  const fail: Result = { status: "failure", error: new Error("reverted") };
+
+  it("reads every balance and reports full coverage", async () => {
+    const r = await onchainBalances("0xabc", tokens, clients({ 8453: [ok(2n * 10n ** 18n), ok(0n)], 4663: [ok(10n ** 17n)] }));
+    expect(r.status).toBe("ok");
+    expect(r.failed).toEqual([]);
+    expect([...r.balances]).toEqual([["gCOOP", 2], ["gKAI", 0], ["gJET", 0.1]]);
+  });
+
+  it("reports a rejected chain and failed calls as partial instead of zero", async () => {
+    const r = await onchainBalances("0xabc", tokens, clients({ 8453: [ok(10n ** 18n), fail], 4663: "reject" }));
+    expect(r.status).toBe("partial");
+    expect(r.failed.sort()).toEqual(["gJET", "gKAI"]);
+    expect([...r.balances]).toEqual([["gCOOP", 1]]);
+  });
+
+  it("reports failed when no balance could be read", async () => {
+    const r = await onchainBalances("0xabc", tokens, clients({ 8453: "reject", 4663: [fail] }));
+    expect(r.status).toBe("failed");
+    expect(r.balances.size).toBe(0);
   });
 });

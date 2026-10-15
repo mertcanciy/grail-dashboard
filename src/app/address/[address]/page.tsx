@@ -28,7 +28,10 @@ export async function generateMetadata(props: PageProps<"/address/[address]">): 
   const name = w.overview?.username ?? shortAddress(w.address);
   return {
     title: `${name} holdings`,
-    description: `${name} holds ${formatUsd(w.totals.tokensUsd, { compact: true })} across ${w.rows.length} gTokens.`,
+    description:
+      w.balanceStatus === "failed"
+        ? `${name}'s gToken holdings on Grail Dashboard.`
+        : `${name} holds ${formatUsd(w.totals.tokensUsd, { compact: true })} across ${w.rows.length} gTokens.`,
   };
 }
 
@@ -37,6 +40,7 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
   const w = await loadWallet(address);
   if (!w) notFound();
   const name = w.overview?.username ?? w.overview?.display_name ?? shortAddress(w.address);
+  const balancesUnread = w.balanceStatus === "failed";
 
   return (
     <div className="mx-auto max-w-7xl px-5 pt-10 sm:px-8 sm:pt-14">
@@ -87,9 +91,9 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
       <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-hairline bg-hairline shadow-[var(--shadow-soft)] sm:grid-cols-4">
         {(
           [
-            ["gToken holdings", formatUsd(w.totals.tokensUsd, { compact: true })],
-            ["gTokens held", formatNumber(w.rows.length)],
-            ["Items it could redeem", formatNumber(w.totals.redeemableItems)],
+            ["gToken holdings", balancesUnread ? "—" : formatUsd(w.totals.tokensUsd, { compact: true })],
+            ["gTokens held", balancesUnread ? "—" : formatNumber(w.rows.length)],
+            ["Items it could redeem", balancesUnread ? "—" : formatNumber(w.totals.redeemableItems)],
             ["Liquidity positions", w.totals.lpUsd != null ? formatUsd(w.totals.lpUsd, { compact: true }) : "—"],
           ] as const
         ).map(([label, value]) => (
@@ -105,8 +109,21 @@ export default async function WalletPage(props: PageProps<"/address/[address]">)
           <h2 id="holdings-title" className="font-display text-xl font-semibold tracking-tight">
             Holdings
           </h2>
-          {w.rows.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate">This wallet doesn&apos;t hold any gTokens right now.</p>
+          {w.balanceStatus === "partial" && (
+            <p className="mt-2 rounded-xl bg-gold-wash px-3 py-2 text-xs text-gold-ink">
+              Some balances couldn&apos;t be read from the chain right now, so holdings and totals may undercount.
+            </p>
+          )}
+          {balancesUnread ? (
+            <p className="py-10 text-center text-sm text-slate">
+              Couldn&apos;t read this wallet&apos;s balances from the chain right now; showing nothing rather than guessing.
+            </p>
+          ) : w.rows.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate">
+              {w.balanceStatus === "partial"
+                ? "No gTokens found among the balances that could be read."
+                : "This wallet doesn't hold any gTokens right now."}
+            </p>
           ) : (
             <>
             <ul className="mt-3 divide-y divide-hairline sm:hidden">
