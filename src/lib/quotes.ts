@@ -1,10 +1,10 @@
 import { unstable_cache } from "next/cache";
-import { erc20Abi, parseAbi, parseUnits, type Abi, type Address } from "viem";
+import { parseAbi, parseUnits, type Abi, type Address } from "viem";
 import { base, robinhood } from "viem/chains";
 import { getEquityQuote, getToken } from "./grail/api";
-import { quoteAssetOf, tokensPerItem } from "./grail/meta";
+import { isUsdQuote, quoteAssetOf, tokensPerItem } from "./grail/meta";
 import type { GrailToken } from "./grail/types";
-import { clientFor } from "./onchain";
+import { clientFor, erc20Meta, gTokenIs0, v3PoolSides } from "./onchain";
 
 /** Uniswap quoter deployments (from @uniswap/sdk-core address maps). */
 const QUOTERS: Record<number, { v3?: Address; v4: Address }> = {
@@ -24,12 +24,6 @@ const v4QuoterAbi = parseAbi([
   "function quoteExactOutputSingle(QuoteExactSingleParams params) view returns (uint256 amountIn, uint256 gasEstimate)",
   "function quoteExactInputSingle(QuoteExactSingleParams params) view returns (uint256 amountOut, uint256 gasEstimate)",
 ]);
-const v3PoolAbi = parseAbi([
-  "function token0() view returns (address)",
-  "function token1() view returns (address)",
-  "function fee() view returns (uint24)",
-]);
-
 /** Fractions of one redeemable item to quote; the full item plus a depth curve below it. */
 export const DEPTH_FRACTIONS = [0.01, 0.05, 0.1, 0.25, 0.5, 1] as const;
 
@@ -75,7 +69,7 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
 
   if (token.v4_pool) {
     const k = token.v4_pool.pool_key;
-    const gIs0 = k.currency0.toLowerCase() === gToken.toLowerCase();
+    const gIs0 = gTokenIs0(k.currency0, gToken);
     quoteToken = (gIs0 ? k.currency1 : k.currency0) as Address;
     const poolKey = {
       currency0: k.currency0 as Address,
@@ -109,13 +103,8 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
     });
   } else {
     if (!q.v3) return null;
-    const pool = token.pool_address as Address;
-    const [t0, t1, fee] = await Promise.all([
-      client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token0" }),
-      client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token1" }),
-      client.readContract({ address: pool, abi: v3PoolAbi, functionName: "fee" }),
-    ]);
-    quoteToken = t0.toLowerCase() === gToken.toLowerCase() ? t1 : t0;
+    const { quoteToken: qt, fee } = await v3PoolSides(client, token);
+    quoteToken = qt;
     calls = DEPTH_FRACTIONS.flatMap((fraction) => {
       const amount = parseUnits(String(perItem * fraction), 18);
       return [
@@ -141,14 +130,13 @@ export async function computeItemQuote(token: GrailToken): Promise<ItemQuote | n
     });
   }
 
-  const [decimals, symbol, results] = await Promise.all([
-    client.readContract({ address: quoteToken, abi: erc20Abi, functionName: "decimals" }),
-    client.readContract({ address: quoteToken, abi: erc20Abi, functionName: "symbol" }).catch(() => quoteAssetOf(token)),
+  const [{ decimals, symbol }, results] = await Promise.all([
+    erc20Meta(client, quoteToken, quoteAssetOf(token)),
     client.multicall({ contracts: calls.map((c) => c.call), allowFailure: true }),
   ]);
 
   const amounts = results.map((r) => (r.status === "success" ? Number((r.result as readonly bigint[])[0]) / 10 ** decimals : null));
-  const isUsd = /USD/i.test(symbol);
+  const isUsd = isUsdQuote(symbol);
 
   // Stock-paired pools quote in an equity token; convert with Robinhood's live quote for that equity. Without
   // one, fall back to the rate implied by Grail's USD price and the smallest sell quote, which hides any gap

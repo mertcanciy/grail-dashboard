@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { TokenView } from "@/lib/token-view";
 import { impact } from "@/lib/quotes";
-import { primaryReserve, ticker } from "@/lib/grail/meta";
+import { isUsdQuote, primaryReserve, ticker } from "@/lib/grail/meta";
 import { formatNumber, formatShare, formatUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -135,7 +135,7 @@ export function ArbitragePanel({ view }: { view: TokenView }) {
                 })}
               </tbody>
             </table>
-            {quote.quoteSymbol && !/USD/i.test(quote.quoteSymbol) && (
+            {quote.quoteSymbol && !isUsdQuote(quote.quoteSymbol) && (
               <p className="mt-2 text-xs text-slate">
                 This pool trades against {quote.quoteSymbol};{" "}
                 {quote.quoteUsdSource === "robinhood"

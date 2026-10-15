@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GrailToken } from "@/lib/grail/types";
 import { readOnchain, type OnchainSnapshot, type OnchainTarget } from "@/lib/onchain";
-import { chainOf, quoteAssetOf, ticker } from "@/lib/grail/meta";
+import { chainOf, isUsdQuote, quoteAssetOf, ticker } from "@/lib/grail/meta";
 import { formatNumber, formatPrice, formatTokenAmount, formatUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,7 @@ export function OnchainPanel({
   const quote = quoteAssetOf(token);
   const apiPrice = token.market_price ?? 0;
   const pool = snap?.pool;
-  const isUsd = pool?.quoteSymbol.toUpperCase().includes("USD");
+  const isUsd = pool ? isUsdQuote(pool.quoteSymbol) : undefined;
   const poolUsd = pool ? (isUsd ? pool.priceInQuote : pegUsd ? pool.priceInQuote * pegUsd : null) : null;
   const drift = poolUsd != null && apiPrice ? ((poolUsd - apiPrice) / apiPrice) * 100 : null;
   const impliedQuoteUsd = pool && !isUsd && !pegUsd && pool.priceInQuote > 0 ? apiPrice / pool.priceInQuote : null;

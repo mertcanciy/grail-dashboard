@@ -12,8 +12,9 @@ import {
 } from "viem";
 import { base, robinhood } from "viem/chains";
 import type { GrailToken } from "./grail/types";
+import { quoteAssetOf } from "./grail/meta";
 
-export type OnchainTarget = Pick<GrailToken, "chain_id" | "token_address" | "pool_address" | "v4_pool">;
+export type OnchainTarget = Pick<GrailToken, "chain_id" | "token_address" | "pool_address" | "v4_pool" | "peg_ticker">;
 
 const clients = new Map<number, PublicClient>();
 
@@ -37,13 +38,28 @@ export function clientFor(chainId: number) {
   return c;
 }
 
-const v3PoolAbi = parseAbi([
+export const v3PoolAbi = parseAbi([
   "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16, uint16, uint16, uint8, bool)",
   "function liquidity() view returns (uint128)",
   "function fee() view returns (uint24)",
   "function token0() view returns (address)",
   "function token1() view returns (address)",
 ]);
+
+export function gTokenIs0(token0: string, gToken: string) {
+  return token0.toLowerCase() === gToken.toLowerCase();
+}
+
+export async function v3PoolSides(client: PublicClient, token: Pick<OnchainTarget, "pool_address" | "token_address">) {
+  const pool = token.pool_address as Address;
+  const [token0, token1, fee] = await Promise.all([
+    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token0" }),
+    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token1" }),
+    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "fee" }),
+  ]);
+  const gIs0 = gTokenIs0(token0, token.token_address);
+  return { token0, token1, fee, gIs0, quoteToken: gIs0 ? token1 : token0 };
+}
 
 const poolManagerAbi = parseAbi(["function extsload(bytes32 slot) view returns (bytes32)"]);
 
@@ -72,28 +88,25 @@ function priceFromSqrt(sqrtPriceX96: bigint, dec0: number, dec1: number, gTokenI
   return gTokenIsToken0 ? token1PerToken0 : 1 / token1PerToken0;
 }
 
-async function erc20Meta(client: PublicClient, address: Address) {
+export async function erc20Meta(client: PublicClient, address: Address, fallbackSymbol: string) {
   const [decimals, symbol] = await Promise.all([
     client.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
-    client.readContract({ address, abi: erc20Abi, functionName: "symbol" }).catch(() => "?"),
+    client.readContract({ address, abi: erc20Abi, functionName: "symbol" }).catch(() => fallbackSymbol),
   ]);
   return { decimals: Number(decimals), symbol };
 }
 
 async function readV3(client: PublicClient, token: OnchainTarget): Promise<OnchainSnapshot["pool"]> {
   const pool = token.pool_address as Address;
-  const [slot0, liquidity, fee, token0, token1] = await Promise.all([
+  const [sides, slot0, liquidity] = await Promise.all([
+    v3PoolSides(client, token),
     client.readContract({ address: pool, abi: v3PoolAbi, functionName: "slot0" }),
     client.readContract({ address: pool, abi: v3PoolAbi, functionName: "liquidity" }),
-    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "fee" }),
-    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token0" }),
-    client.readContract({ address: pool, abi: v3PoolAbi, functionName: "token1" }),
   ]);
-  const gIs0 = token0.toLowerCase() === token.token_address.toLowerCase();
-  const quote = gIs0 ? token1 : token0;
+  const { token0, token1, fee, gIs0, quoteToken: quote } = sides;
   const [m0, m1, balToken, balQuote] = await Promise.all([
-    erc20Meta(client, token0),
-    erc20Meta(client, token1),
+    erc20Meta(client, token0, quoteAssetOf(token)),
+    erc20Meta(client, token1, quoteAssetOf(token)),
     client.readContract({ address: token.token_address as Address, abi: erc20Abi, functionName: "balanceOf", args: [pool] }),
     client.readContract({ address: quote, abi: erc20Abi, functionName: "balanceOf", args: [pool] }),
   ]);
@@ -124,15 +137,15 @@ async function readV4(client: PublicClient, token: OnchainTarget): Promise<Oncha
   const [slot0Word, liquidityWord, m0, m1] = await Promise.all([
     client.readContract({ address: pm, abi: poolManagerAbi, functionName: "extsload", args: [stateSlot] }),
     client.readContract({ address: pm, abi: poolManagerAbi, functionName: "extsload", args: [liquiditySlot] }),
-    erc20Meta(client, currency0 as Address),
-    erc20Meta(client, currency1 as Address),
+    erc20Meta(client, currency0 as Address, quoteAssetOf(token)),
+    erc20Meta(client, currency1 as Address, quoteAssetOf(token)),
   ]);
   const word = BigInt(slot0Word);
   const sqrtPriceX96 = word & ((1n << 160n) - 1n);
   let tick = Number((word >> 160n) & 0xffffffn);
   if (tick >= 0x800000) tick -= 0x1000000;
   const lpFee = Number((word >> 208n) & 0xffffffn);
-  const gIs0 = currency0.toLowerCase() === token.token_address.toLowerCase();
+  const gIs0 = gTokenIs0(currency0, token.token_address);
   return {
     version: "v4",
     feeBps: lpFee / 100,
