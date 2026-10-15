@@ -126,6 +126,11 @@ export function quoteAssetOf(t: Pick<GrailToken, "peg_ticker">) {
   return t.peg_ticker?.trim() ? t.peg_ticker.trim().toUpperCase() : "USDC";
 }
 
+/** Whether a pool's quote asset is a USD stablecoin (USDC, USDT, ...). */
+export function isUsdQuote(symbol: string) {
+  return /USD/i.test(symbol);
+}
+
 export function poolVersion(t: Pick<GrailToken, "v4_pool">) {
   return t.v4_pool ? "Uniswap v4" : "Uniswap v3";
 }
